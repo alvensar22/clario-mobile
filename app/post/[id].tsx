@@ -41,11 +41,16 @@ export default function PostPreviewScreen() {
     loadPost();
   }, [loadPost]);
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  }, [router]);
+
   if (!id) {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>Invalid post</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Text style={styles.backBtnText}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -64,7 +69,7 @@ export default function PostPreviewScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.errorText}>Post not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <Text style={styles.backBtnText}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -78,7 +83,7 @@ export default function PostPreviewScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerBack} hitSlop={12}>
+        <TouchableOpacity onPress={handleBack} style={styles.headerBack} hitSlop={12}>
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Post</Text>
@@ -90,14 +95,14 @@ export default function PostPreviewScreen() {
         showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <TouchableOpacity
-            onPress={() => router.push({ pathname: '/profile/[username]', params: { username } })}>
+            onPress={() => router.push(`/profile/${username}`)}>
             <Avatar src={avatarUrl} fallback={username} size="md" />
           </TouchableOpacity>
           <View style={styles.body}>
             <View style={styles.metaRow}>
               <TouchableOpacity
                 onPress={() =>
-                  router.push({ pathname: '/profile/[username]', params: { username } })
+                  router.push(`/profile/${username}`)
                 }>
                 <Text style={styles.author}>@{username}</Text>
               </TouchableOpacity>

@@ -22,6 +22,15 @@ export interface ApiUserProfile {
   created_at: string;
 }
 
+/** Public profile from GET /api/users/[username] */
+export interface ApiPublicProfile {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  created_at: string;
+}
+
 export interface ApiInterest {
   id: string;
   name: string;
@@ -30,6 +39,29 @@ export interface ApiInterest {
 
 export interface ApiUserInterestsResponse {
   interestIds: string[];
+}
+
+/** Response from GET /api/users/[username]/interests */
+export interface ApiPublicProfileInterestsResponse {
+  interests: ApiInterest[];
+}
+
+/** Follow status from GET /api/users/[username]/follow */
+export interface ApiFollowStatus {
+  following: boolean;
+  followerCount: number;
+  followingCount: number;
+}
+
+/** User summary in followers/following list */
+export interface ApiFollowListUser {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+export interface ApiFollowListResponse {
+  users: ApiFollowListUser[];
 }
 
 export interface ApiPost {

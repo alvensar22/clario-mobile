@@ -7,8 +7,12 @@ import type {
   ApiResult,
   ApiSession,
   ApiUserProfile,
+  ApiPublicProfile,
+  ApiPublicProfileInterestsResponse,
   ApiInterest,
   ApiUserInterestsResponse,
+  ApiFollowStatus,
+  ApiFollowListResponse,
   ApiPost,
   ApiComment,
 } from '@/types/api';
@@ -79,6 +83,31 @@ export const api = {
     });
   },
 
+  async uploadAvatar(uri: string, fileName?: string): Promise<ApiResult<{ avatarUrl?: string }>> {
+    const token = await getAccessToken();
+    const url = `${API_BASE_URL}/api/users/me/avatar`;
+    const formData = new FormData();
+    formData.append('avatar', {
+      uri,
+      name: fileName ?? 'avatar.jpg',
+      type: 'image/jpeg',
+    } as unknown as Blob);
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'POST', body: formData, headers });
+    const text = await res.text();
+    let data: { avatarUrl?: string } | undefined;
+    let error: string | undefined;
+    try {
+      const parsed = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      if (res.ok) data = parsed as { avatarUrl?: string };
+      else error = (parsed.error as string) ?? res.statusText;
+    } catch {
+      error = text || res.statusText;
+    }
+    return { data, error, status: res.status };
+  },
+
   getInterests(): Promise<ApiResult<ApiInterest[]>> {
     return fetchApi<ApiInterest[]>('/api/interests');
   },
@@ -91,6 +120,48 @@ export const api = {
     return fetchApi<ApiUserInterestsResponse>('/api/users/me/interests', {
       method: 'PUT',
       body: JSON.stringify(body),
+    });
+  },
+
+  getUserByUsername(username: string): Promise<ApiResult<ApiPublicProfile>> {
+    return fetchApi<ApiPublicProfile>(`/api/users/${encodeURIComponent(username)}`);
+  },
+
+  getUserPosts(username: string): Promise<ApiResult<{ posts: ApiPost[] }>> {
+    return fetchApi<{ posts: ApiPost[] }>(`/api/users/${encodeURIComponent(username)}/posts`);
+  },
+
+  getPublicProfileInterests(username: string): Promise<ApiResult<ApiPublicProfileInterestsResponse>> {
+    return fetchApi<ApiPublicProfileInterestsResponse>(
+      `/api/users/${encodeURIComponent(username)}/interests`
+    );
+  },
+
+  getFollowStatus(username: string): Promise<ApiResult<ApiFollowStatus>> {
+    return fetchApi<ApiFollowStatus>(`/api/users/${encodeURIComponent(username)}/follow`);
+  },
+
+  getFollowers(username: string): Promise<ApiResult<ApiFollowListResponse>> {
+    return fetchApi<ApiFollowListResponse>(
+      `/api/users/${encodeURIComponent(username)}/follow?list=followers`
+    );
+  },
+
+  getFollowing(username: string): Promise<ApiResult<ApiFollowListResponse>> {
+    return fetchApi<ApiFollowListResponse>(
+      `/api/users/${encodeURIComponent(username)}/follow?list=following`
+    );
+  },
+
+  followUser(username: string): Promise<ApiResult<{ following: boolean }>> {
+    return fetchApi<{ following: boolean }>(`/api/users/${encodeURIComponent(username)}/follow`, {
+      method: 'POST',
+    });
+  },
+
+  unfollowUser(username: string): Promise<ApiResult<{ following: boolean }>> {
+    return fetchApi<{ following: boolean }>(`/api/users/${encodeURIComponent(username)}/follow`, {
+      method: 'DELETE',
     });
   },
 

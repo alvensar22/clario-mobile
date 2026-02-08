@@ -103,7 +103,7 @@ export default function SignUpScreen() {
 
         <Text style={styles.footer}>
           Already have an account?{' '}
-          <Text style={styles.link} onPress={() => router.back()}>
+          <Text style={styles.link} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(auth)/login'))}>
             Sign in
           </Text>
         </Text>

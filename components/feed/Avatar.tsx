@@ -1,9 +1,9 @@
 import { Image } from 'expo-image';
 import { View, Text, StyleSheet } from 'react-native';
 
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'sm' | 'md' | 'lg' | 'xl';
 
-const SIZES: Record<Size, number> = { sm: 32, md: 40, lg: 96 };
+const SIZES: Record<Size, number> = { sm: 32, md: 40, lg: 96, xl: 120 };
 
 interface AvatarProps {
   src?: string | null;
@@ -29,7 +29,7 @@ export function Avatar({ src, fallback = '?', size = 'md' }: AvatarProps) {
           contentFit="cover"
         />
       ) : (
-        <Text style={[styles.initials, { fontSize: size === 'sm' ? 12 : size === 'md' ? 14 : 18 }]}>
+        <Text style={[styles.initials, { fontSize: size === 'sm' ? 12 : size === 'md' ? 14 : size === 'lg' ? 18 : 24 }]}>
           {initials}
         </Text>
       )}

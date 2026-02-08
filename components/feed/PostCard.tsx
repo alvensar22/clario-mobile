@@ -40,7 +40,7 @@ export function PostCard({ post, currentUserId, onRefresh }: PostCardProps) {
             <TouchableOpacity
               onPress={(e) => {
                 e?.stopPropagation?.();
-                router.push({ pathname: '/profile/[username]', params: { username } });
+                router.push(`/profile/${username}`);
               }}>
               <Avatar src={avatarUrl} fallback={username} size="md" />
             </TouchableOpacity>
@@ -50,7 +50,7 @@ export function PostCard({ post, currentUserId, onRefresh }: PostCardProps) {
                   <TouchableOpacity
                     onPress={(e) => {
                       e?.stopPropagation?.();
-                      router.push({ pathname: '/profile/[username]', params: { username } });
+                      router.push(`/profile/${username}`);
                     }}>
                     <Text style={styles.author}>@{username}</Text>
                   </TouchableOpacity>
