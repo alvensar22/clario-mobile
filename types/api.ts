@@ -46,6 +46,15 @@ export interface ApiPost {
   liked?: boolean;
 }
 
+export interface ApiComment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author?: { username: string | null; avatar_url: string | null };
+}
+
 export interface ApiResult<T> {
   data?: T;
   error?: string;
