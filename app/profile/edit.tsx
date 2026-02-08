@@ -161,7 +161,7 @@ export default function ProfileEditScreen() {
         <Button
           variant="secondary"
           title="View Profile"
-          onPress={() => router.push(`/profile/${profile.username}`)}
+          onPress={() => router.replace('/(tabs)')}
         />
       </View>
     </ScrollView>
