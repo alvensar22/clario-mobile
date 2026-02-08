@@ -13,7 +13,7 @@ import type {
   ApiComment,
 } from '@/types/api';
 import { API_BASE_URL } from '@/utils/env';
-import { getAccessToken } from '@/store/auth';
+import { getAccessToken } from '@/store/auth-tokens';
 
 async function fetchApi<T>(
   path: string,
@@ -97,6 +97,10 @@ export const api = {
   getPosts(feed?: 'following' | 'interests' | 'explore'): Promise<ApiResult<{ posts: ApiPost[] }>> {
     const url = feed ? `/api/posts?feed=${encodeURIComponent(feed)}` : '/api/posts';
     return fetchApi<{ posts: ApiPost[] }>(url);
+  },
+
+  getPost(postId: string): Promise<ApiResult<ApiPost>> {
+    return fetchApi<ApiPost>(`/api/posts/${encodeURIComponent(postId)}`);
   },
 
   likePost(postId: string): Promise<ApiResult<{ count: number; liked: boolean }>> {

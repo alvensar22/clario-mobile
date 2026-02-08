@@ -13,12 +13,14 @@ export default function Index() {
   useEffect(() => {
     if (!user || !profile?.username) {
       setInterestsChecked(true);
+      setNeedsInterests(false);
       return;
     }
     let cancelled = false;
-    api.getMyInterests().then(({ data }) => {
+    api.getMyInterests().then(({ data, error }) => {
       if (cancelled) return;
-      setNeedsInterests((data?.interestIds?.length ?? 0) === 0);
+      // Only send to interests onboarding when API succeeded and returned empty list
+      setNeedsInterests(!error && (data?.interestIds?.length ?? 0) === 0);
       setInterestsChecked(true);
     });
     return () => { cancelled = true; };
