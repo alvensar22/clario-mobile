@@ -1,98 +1,142 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { LogoIcon } from '@/components/ui/LogoIcon';
+import { api } from '@/services/api/client';
+import type { ApiPost } from '@/types/api';
+import { useAuthStore } from '@/store/auth';
+
+type FeedTab = 'explore' | 'following' | 'interests';
+const FEED_OPTIONS: { value: FeedTab; label: string }[] = [
+  { value: 'explore', label: 'For you' },
+  { value: 'following', label: 'Following' },
+  { value: 'interests', label: 'My Interests' },
+];
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [tab, setTab] = useState<FeedTab>('explore');
+  const [posts, setPosts] = useState<ApiPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const fetchFeed = useCallback(async () => {
+    const { data, error } = await api.getPosts(tab);
+    if (error) return;
+    setPosts(data?.posts ?? []);
+  }, [tab]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchFeed().finally(() => setLoading(false));
+  }, [fetchFeed]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchFeed();
+    setRefreshing(false);
+  }, [fetchFeed]);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.logoRow}>
+          <LogoIcon size={28} color="#fff" />
+          <Text style={styles.logoText}>clario</Text>
+        </View>
+        <View style={styles.tabRow}>
+          {FEED_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.value}
+              onPress={() => setTab(opt.value)}
+              style={[styles.tab, tab === opt.value && styles.tabActive]}
+              activeOpacity={0.7}>
+              <Text style={[styles.tabText, tab === opt.value && styles.tabTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      ) : posts.length === 0 ? (
+        <View style={styles.centered}>
+          <Text style={styles.emptyTitle}>No posts yet</Text>
+          <Text style={styles.emptySubtitle}>
+            {tab === 'explore'
+              ? 'When people post, they’ll show up here.'
+              : tab === 'following'
+                ? 'Follow people to see their posts here.'
+                : 'Add interests to see posts about what you care about.'}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+          }
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.author}>@{item.author?.username ?? 'unknown'}</Text>
+                {item.interest ? (
+                  <Text style={styles.interest}>{item.interest.name}</Text>
+                ) : null}
+              </View>
+              <Text style={styles.content}>{item.content}</Text>
+              <View style={styles.cardFooter}>
+                <Text style={styles.meta}>
+                  {(item.like_count ?? 0)} likes · {(item.comment_count ?? 0)} comments
+                </Text>
+              </View>
+            </View>
+          )}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: { flex: 1, backgroundColor: '#000' },
+  header: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#262626' },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  logoText: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  tabRow: { flexDirection: 'row', gap: 8 },
+  tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 9999 },
+  tabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  tabText: { fontSize: 15, fontWeight: '500', color: '#737373' },
+  tabTextActive: { color: '#fff' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: '#fff', marginBottom: 8 },
+  emptySubtitle: { fontSize: 14, color: '#a3a3a3', textAlign: 'center' },
+  list: { padding: 16, paddingBottom: 32 },
+  card: {
+    backgroundColor: '#0a0a0a',
+    borderWidth: 1,
+    borderColor: '#262626',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  author: { fontSize: 14, fontWeight: '600', color: '#fff' },
+  interest: { fontSize: 12, color: '#a3a3a3' },
+  content: { fontSize: 15, color: '#e5e5e5', lineHeight: 22 },
+  cardFooter: { marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#262626' },
+  meta: { fontSize: 12, color: '#737373' },
 });

@@ -1,53 +1,54 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Clario theme: black background, white text, neutral grays, purple/pink accent.
+ * Matches clario-web design.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: '#ffffff',
+    textSecondary: '#a3a3a3',
+    background: '#000000',
+    card: '#0a0a0a',
+    border: '#262626',
+    tint: '#a855f7',
+    tabIconDefault: '#737373',
+    tabIconSelected: '#ffffff',
+    error: '#f87171',
+    success: '#4ade80',
+    inputBg: '#171717',
+    inputBorder: '#404040',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#ffffff',
+    textSecondary: '#a3a3a3',
+    background: '#000000',
+    card: '#0a0a0a',
+    border: '#262626',
+    tint: '#a855f7',
+    tabIconDefault: '#737373',
+    tabIconSelected: '#ffffff',
+    error: '#f87171',
+    success: '#4ade80',
+    inputBg: '#171717',
+    inputBorder: '#404040',
   },
 };
 
+/** Gradient accent (purple to pink) - use for highlights */
+export const Accent = {
+  purple: '#a855f7',
+  pink: '#ec4899',
+};
+
 export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
+  ios: { sans: 'system-ui', serif: 'ui-serif', rounded: 'ui-rounded', mono: 'ui-monospace' },
+  default: { sans: 'normal', serif: 'serif', rounded: 'normal', mono: 'monospace' },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+    rounded: 'normal',
+    mono: "Menlo, Monaco, Consolas, monospace",
   },
 });
