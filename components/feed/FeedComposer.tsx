@@ -1,3 +1,4 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
@@ -10,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 
 import { api } from '@/services/api/client';
@@ -127,7 +129,7 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
             {uploading ? (
               <ActivityIndicator size="small" color="#737373" />
             ) : (
-              <Text style={styles.iconText}>📷</Text>
+              <MaterialIcons name="image" size={22} color="#737373" />
             )}
           </TouchableOpacity>
           <TouchableOpacity
@@ -139,31 +141,39 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
           </TouchableOpacity>
           {showInterestPicker ? (
             <View style={styles.interestDropdown}>
-              <TouchableOpacity
-                onPress={() => {
-                  setInterestId(null);
-                  setShowInterestPicker(false);
-                }}
-                style={styles.interestItem}>
-                <Text style={styles.interestItemText}>None</Text>
-              </TouchableOpacity>
-              {interests.map((i) => (
+              <ScrollView
+                style={styles.interestScroll}
+                contentContainerStyle={styles.interestScrollContent}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={true}
+                bounces={false}
+                keyboardShouldPersistTaps="handled">
                 <TouchableOpacity
-                  key={i.id}
                   onPress={() => {
-                    setInterestId(i.id);
+                    setInterestId(null);
                     setShowInterestPicker(false);
                   }}
                   style={styles.interestItem}>
-                  <Text
-                    style={[
-                      styles.interestItemText,
-                      interestId === i.id && styles.interestItemTextActive,
-                    ]}>
-                    {i.name}
-                  </Text>
+                  <Text style={styles.interestItemText}>None</Text>
                 </TouchableOpacity>
-              ))}
+                {interests.map((i) => (
+                  <TouchableOpacity
+                    key={i.id}
+                    onPress={() => {
+                      setInterestId(i.id);
+                      setShowInterestPicker(false);
+                    }}
+                    style={styles.interestItem}>
+                    <Text
+                      style={[
+                        styles.interestItemText,
+                        interestId === i.id && styles.interestItemTextActive,
+                      ]}>
+                      {i.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
           ) : null}
         </View>
@@ -193,19 +203,21 @@ const styles = StyleSheet.create({
   container: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(38,38,38,0.6)',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
   },
-  row: { flexDirection: 'row', gap: 12 },
+  row: { flexDirection: 'row', gap: 14 },
   inputWrap: { flex: 1, minWidth: 0 },
   input: {
-    minHeight: 24,
+    minHeight: 28,
     fontSize: 15,
     color: '#fff',
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 0,
+    lineHeight: 22,
   },
   previewWrap: {
-    marginTop: 8,
+    marginTop: 12,
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
@@ -215,30 +227,30 @@ const styles = StyleSheet.create({
   preview: { width: '100%', aspectRatio: 16 / 10, backgroundColor: '#171717' },
   removeBtn: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: 'rgba(0,0,0,0.7)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removeText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  removeText: { color: '#fff', fontSize: 20, fontWeight: '600' },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
-    gap: 8,
+    marginTop: 14,
+    paddingTop: 12,
+    gap: 12,
   },
-  toolbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  toolbarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: { padding: 4 },
-  iconText: { fontSize: 20 },
+  toolbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toolbarRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBtn: { padding: 8 },
   interestBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 9999,
   },
   interestBtnActive: { backgroundColor: 'rgba(38,38,38,0.8)' },
@@ -247,28 +259,30 @@ const styles = StyleSheet.create({
   interestDropdown: {
     position: 'absolute',
     left: 0,
-    top: 36,
-    minWidth: 140,
-    maxHeight: 200,
+    top: 44,
+    minWidth: 160,
+    maxHeight: 220,
     backgroundColor: '#0a0a0a',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#262626',
     zIndex: 10,
-    paddingVertical: 4,
+    overflow: 'hidden',
   },
-  interestItem: { paddingHorizontal: 14, paddingVertical: 10 },
+  interestScroll: { maxHeight: 220 },
+  interestScrollContent: { paddingVertical: 6, paddingBottom: 12 },
+  interestItem: { paddingHorizontal: 16, paddingVertical: 12 },
   interestItemText: { fontSize: 13, color: '#a3a3a3' },
   interestItemTextActive: { color: '#fff', fontWeight: '600' },
   count: { fontSize: 12, color: '#737373' },
   countOver: { color: '#f87171' },
   postBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 9999,
     backgroundColor: '#fff',
   },
   postBtnDisabled: { opacity: 0.4 },
   postBtnText: { fontSize: 14, fontWeight: '600', color: '#000' },
-  errorText: { fontSize: 13, color: '#f87171', marginTop: 8 },
+  errorText: { fontSize: 13, color: '#f87171', marginTop: 12 },
 });

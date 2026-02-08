@@ -22,6 +22,8 @@ const MAPPING = {
   'plus': 'add',
   'heart': 'favorite',
   'person.fill': 'person',
+  'photo.on.rectangle.angle': 'image',
+  'photo': 'image',
 } as IconMapping;
 
 /**

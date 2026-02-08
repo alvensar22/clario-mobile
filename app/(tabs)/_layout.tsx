@@ -32,7 +32,7 @@ export default function TabLayout() {
         name="create"
         options={{
           title: 'Create',
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="plus" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={24} name="photo" color={color} />,
         }}
       />
       <Tabs.Screen
