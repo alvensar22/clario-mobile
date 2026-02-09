@@ -78,6 +78,13 @@ export interface ApiPost {
   liked?: boolean;
 }
 
+/** Body for PATCH /api/posts/[id] */
+export interface ApiUpdatePostBody {
+  content?: string;
+  media_url?: string | null;
+  interest_id?: string | null;
+}
+
 export interface ApiComment {
   id: string;
   post_id: string;

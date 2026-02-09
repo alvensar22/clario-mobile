@@ -14,6 +14,7 @@ import {
 import type { ApiPost } from '@/types/api';
 import { Avatar } from './Avatar';
 import { PostActions } from './PostActions';
+import { PostCardMenu } from './PostCardMenu';
 import { RelativeTime } from './RelativeTime';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -22,14 +23,17 @@ interface PostCardProps {
   post: ApiPost;
   currentUserId?: string | null;
   onRefresh?: () => void;
+  onDelete?: (postId: string) => void;
 }
 
-export function PostCard({ post, currentUserId, onRefresh }: PostCardProps) {
+export function PostCard({ post, currentUserId, onRefresh, onDelete }: PostCardProps) {
   const router = useRouter();
   const [showImagePreview, setShowImagePreview] = useState(false);
   const username = post.author?.username ?? 'unknown';
   const avatarUrl = post.author?.avatar_url ?? null;
   const interestName = post.interest?.name;
+  const isOwnPost =
+    !!currentUserId && !!post.user_id && String(post.user_id) === String(currentUserId);
 
   return (
     <>
@@ -65,6 +69,18 @@ export function PostCard({ post, currentUserId, onRefresh }: PostCardProps) {
                     </>
                   ) : null}
                 </View>
+                {isOwnPost ? (
+                  <View onStartShouldSetResponder={() => true}>
+                    <PostCardMenu
+                      post={post}
+                      onDelete={(id) => {
+                        onDelete?.(id);
+                        onRefresh?.();
+                      }}
+                      onEditSuccess={onRefresh}
+                    />
+                  </View>
+                ) : null}
               </View>
               <Text style={styles.content}>{post.content}</Text>
               {post.media_url ? (

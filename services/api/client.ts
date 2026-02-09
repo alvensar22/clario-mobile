@@ -14,6 +14,7 @@ import type {
   ApiFollowStatus,
   ApiFollowListResponse,
   ApiPost,
+  ApiUpdatePostBody,
   ApiComment,
 } from '@/types/api';
 import { API_BASE_URL } from '@/utils/env';
@@ -209,6 +210,19 @@ export const api = {
     return fetchApi<ApiPost>('/api/posts', {
       method: 'POST',
       body: JSON.stringify(body),
+    });
+  },
+
+  updatePost(postId: string, body: ApiUpdatePostBody): Promise<ApiResult<ApiPost>> {
+    return fetchApi<ApiPost>(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  },
+
+  deletePost(postId: string): Promise<ApiResult<{ success: boolean }>> {
+    return fetchApi<{ success: boolean }>(`/api/posts/${encodeURIComponent(postId)}`, {
+      method: 'DELETE',
     });
   },
 
