@@ -16,6 +16,7 @@ import type {
   ApiPost,
   ApiUpdatePostBody,
   ApiSearchResult,
+  ApiActivityResponse,
   ApiComment,
 } from '@/types/api';
 import { API_BASE_URL } from '@/utils/env';
@@ -186,6 +187,12 @@ export const api = {
     }
     return fetchApi<ApiSearchResult>(
       `/api/search?q=${encodeURIComponent(trimmed)}`
+    );
+  },
+
+  getActivity(limit = 10, offset = 0): Promise<ApiResult<ApiActivityResponse>> {
+    return fetchApi<ApiActivityResponse>(
+      `/api/activity?limit=${limit}&offset=${offset}`
     );
   },
 
