@@ -137,8 +137,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#262626",
   },
@@ -151,7 +151,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   composerWrap: {
-    paddingBottom: 24,
+    paddingHorizontal: 4,
+    paddingBottom: 32,
     flexGrow: 1,
   },
 });

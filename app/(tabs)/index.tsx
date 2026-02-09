@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { LogoIcon } from '@/components/ui/LogoIcon';
-import { FeedComposer } from '@/components/feed/FeedComposer';
+import { ComposerCard } from '@/components/feed/ComposerCard';
 import { FeedEmpty } from '@/components/feed/FeedEmpty';
 import { PostCard } from '@/components/feed/PostCard';
 import { api } from '@/services/api/client';
@@ -72,6 +72,23 @@ export default function HomeScreen() {
     ? { username: profile.username ?? '', avatar_url: profile.avatar_url }
     : { username: '', avatar_url: null };
 
+  const listHeader = (
+    <>
+      {profile ? (
+        <View style={styles.composerCardWrap}>
+          <ComposerCard currentUser={currentUser} />
+        </View>
+      ) : null}
+      {loading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      ) : posts.length === 0 ? (
+        <FeedEmpty variant={tab} />
+      ) : null}
+    </>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -94,33 +111,18 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {profile ? (
-        <FeedComposer
-          currentUser={currentUser}
-          interests={interests}
-          onSuccess={fetchFeed}
-        />
-      ) : null}
-
-      {loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#fff" />
-        </View>
-      ) : posts.length === 0 ? (
-        <FeedEmpty variant={tab} />
-      ) : (
-        <FlatList
-          data={posts}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
-          }
-          renderItem={({ item }) => (
-            <PostCard post={item} currentUserId={profile?.id} onRefresh={fetchFeed} />
-          )}
-        />
-      )}
+      <FlatList
+        data={loading ? [] : posts}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={listHeader}
+        contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
+        }
+        renderItem={({ item }) => (
+          <PostCard post={item} currentUserId={profile?.id} onRefresh={fetchFeed} />
+        )}
+      />
     </View>
   );
 }
@@ -129,18 +131,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   header: {
     paddingTop: 56,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#262626',
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
   logoText: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  tabRow: { flexDirection: 'row', gap: 8 },
-  tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 9999 },
+  tabRow: { flexDirection: 'row', gap: 10 },
+  tab: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 9999 },
   tabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   tabText: { fontSize: 15, fontWeight: '500', color: '#737373' },
   tabTextActive: { color: '#fff' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  list: { paddingBottom: 32 },
+  composerCardWrap: { paddingTop: 16, paddingBottom: 8 },
+  loadingWrap: { paddingVertical: 48, alignItems: 'center' },
+  list: { paddingBottom: 40, flexGrow: 1 },
 });
