@@ -13,42 +13,84 @@ export function ComposerCard({ currentUser }: ComposerCardProps) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={styles.trigger}
       onPress={() => router.push('/(tabs)/create')}
-      activeOpacity={0.85}>
-      <Avatar src={currentUser.avatar_url} fallback={currentUser.username} size="md" />
-      <View style={styles.placeholderWrap}>
-        <Text style={styles.placeholder}>Start a thread...</Text>
-        <Text style={styles.hint}>Tap to write a post</Text>
+      activeOpacity={0.7}>
+      <View style={styles.row}>
+        <Avatar src={currentUser.avatar_url} fallback={currentUser.username} size="md" />
+        <Text style={styles.placeholder} numberOfLines={1}>
+          What's on your mind?
+        </Text>
       </View>
-      <MaterialIcons name="chevron-right" size={22} color="#525252" />
+      <View style={styles.toolbar}>
+        <View style={styles.toolbarLeft}>
+          <View style={styles.iconWrap}>
+            <MaterialIcons name="image" size={20} color="#737373" />
+          </View>
+          <View style={styles.topicPill}>
+            <Text style={styles.topicText}>Topic</Text>
+          </View>
+        </View>
+        <View style={styles.postBtn}>
+          <Text style={styles.postBtnText}>Post</Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  trigger: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#262626',
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    backgroundColor: '#0a0a0a',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#262626',
+    gap: 12,
   },
-  placeholderWrap: { flex: 1, minWidth: 0 },
   placeholder: {
-    fontSize: 16,
+    flex: 1,
+    fontSize: 15,
     color: '#737373',
   },
-  hint: {
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 8,
+  },
+  toolbarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconWrap: {
+    padding: 6,
+  },
+  topicPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: '#404040',
+  },
+  topicText: {
     fontSize: 13,
-    color: '#525252',
-    marginTop: 2,
+    color: '#737373',
+  },
+  postBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 9999,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  postBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

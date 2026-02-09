@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   refreshingText: { fontSize: 14, color: '#737373' },
-  composerWrap: { paddingTop: 16, paddingBottom: 8 },
+  composerWrap: { paddingTop: 12, paddingBottom: 4 },
   loadingWrap: {
     paddingVertical: 48,
     alignItems: 'center',

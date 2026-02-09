@@ -102,7 +102,7 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
           <TextInput
             value={content}
             onChangeText={(t) => setContent(t.slice(0, MAX_LENGTH))}
-            placeholder="Start a thread..."
+            placeholder="What's on your mind?"
             placeholderTextColor="#737373"
             maxLength={MAX_LENGTH}
             multiline
