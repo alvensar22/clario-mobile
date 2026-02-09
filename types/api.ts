@@ -85,6 +85,20 @@ export interface ApiUpdatePostBody {
   interest_id?: string | null;
 }
 
+/** One user in GET /api/search response */
+export interface ApiSearchUser {
+  id: string;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+/** Response from GET /api/search */
+export interface ApiSearchResult {
+  users: ApiSearchUser[];
+  interests: ApiInterest[];
+  posts: ApiPost[];
+}
+
 export interface ApiComment {
   id: string;
   post_id: string;

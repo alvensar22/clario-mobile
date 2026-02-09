@@ -15,6 +15,7 @@ import type {
   ApiFollowListResponse,
   ApiPost,
   ApiUpdatePostBody,
+  ApiSearchResult,
   ApiComment,
 } from '@/types/api';
 import { API_BASE_URL } from '@/utils/env';
@@ -173,6 +174,19 @@ export const api = {
 
   getPost(postId: string): Promise<ApiResult<ApiPost>> {
     return fetchApi<ApiPost>(`/api/posts/${encodeURIComponent(postId)}`);
+  },
+
+  search(q: string): Promise<ApiResult<ApiSearchResult>> {
+    const trimmed = q?.trim() ?? '';
+    if (!trimmed) {
+      return Promise.resolve({
+        data: { users: [], interests: [], posts: [] },
+        status: 200,
+      });
+    }
+    return fetchApi<ApiSearchResult>(
+      `/api/search?q=${encodeURIComponent(trimmed)}`
+    );
   },
 
   likePost(postId: string): Promise<ApiResult<{ count: number; liked: boolean }>> {
