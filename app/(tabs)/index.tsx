@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -16,6 +17,7 @@ import { PostCard } from '@/components/feed/PostCard';
 import { api } from '@/services/api/client';
 import type { ApiInterest, ApiPost } from '@/types/api';
 import { useAuthStore } from '@/store/auth';
+import { useFeedStore } from '@/store/feed';
 
 type FeedTab = 'explore' | 'following' | 'interests';
 const FEED_OPTIONS: { value: FeedTab; label: string }[] = [
@@ -57,6 +59,14 @@ export default function HomeScreen() {
     await Promise.all([fetchFeed(), loadInterests()]);
     setRefreshing(false);
   }, [fetchFeed, loadInterests]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (useFeedStore.getState().consumeFeedRefresh()) {
+        fetchFeed();
+      }
+    }, [fetchFeed])
+  );
 
   const currentUser = profile
     ? { username: profile.username ?? '', avatar_url: profile.avatar_url }
