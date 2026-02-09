@@ -33,14 +33,14 @@ export function PostActions({ post }: PostActionsProps) {
             size={18}
             color={liked ? '#f87171' : '#737373'}
           />
-          <Text style={styles.count}>{likeCount}</Text>
+          {likeCount > 0 && <Text style={styles.count}>{likeCount}</Text>}
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setShowComments((c) => !c)}
           style={styles.action}
           activeOpacity={0.7}>
           <MaterialIcons name="chat-bubble-outline" size={18} color="#737373" />
-          <Text style={styles.count}>{commentCount}</Text>
+          {commentCount > 0 && <Text style={styles.count}>{commentCount}</Text>}
         </TouchableOpacity>
       </View>
       {showComments && (
