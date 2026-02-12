@@ -1,6 +1,7 @@
 import { Crown } from 'lucide-react-native';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
+import { PremiumPill } from '@/components/premium/PremiumPill';
 import { LogoIcon } from '@/components/ui/LogoIcon';
 
 export type FeedTab = 'explore' | 'following' | 'interests';
@@ -23,6 +24,7 @@ export function FeedScreenHeader({ tab, onTabChange, isPremium = false }: FeedSc
       <View style={styles.logoRow}>
         <LogoIcon size={28} color="#fff" />
         <Text style={styles.logoText}>clario</Text>
+        {isPremium ? <PremiumPill /> : null}
       </View>
       <View style={styles.tabRow}>
         {FEED_OPTIONS.map((opt) => (
