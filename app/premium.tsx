@@ -9,22 +9,22 @@ import {
   Clock,
   Check,
 } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Linking,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PremiumBadge } from '@/components/premium/PremiumBadge';
 import { ManageSubscriptionButton } from '@/components/premium/ManageSubscriptionButton';
+import { StripeWebView } from '@/components/premium/StripeWebView';
 import { api } from '@/services/api/client';
 import { useAuthStore } from '@/store/auth';
 
@@ -107,6 +107,7 @@ export default function PremiumScreen() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<'monthly' | 'annual' | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('monthly');
+  const [webViewUrl, setWebViewUrl] = useState<string | null>(null);
 
   const isPremium = profile?.is_premium === true;
   const showCancelMessage = params.canceled === 'true';
@@ -115,16 +116,21 @@ export default function PremiumScreen() {
     loadSession().finally(() => setLoading(false));
   }, [loadSession]);
 
+  // Refetch profile when screen gains focus (e.g. returning from Stripe checkout/portal)
+  // so subscription state (is_premium, etc.) stays in sync after payment or cancel.
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading) loadSession();
+    }, [loadSession, loading])
+  );
+
   const handleSubscribe = useCallback(async (plan: 'monthly' | 'annual') => {
     setCheckoutLoading(plan);
     try {
       const res = await api.createCheckoutSession(plan);
       if (res.error) throw new Error(res.error);
       if (res.data?.url) {
-        const opened = await Linking.canOpenURL(res.data.url)
-          ? Linking.openURL(res.data.url)
-          : Promise.resolve(false);
-        if (!opened) throw new Error('Could not open checkout');
+        setWebViewUrl(res.data.url);
         return;
       }
       throw new Error('No checkout URL received');
@@ -138,6 +144,19 @@ export default function PremiumScreen() {
     }
   }, []);
 
+  const handleWebViewSuccess = useCallback(() => {
+    // Refresh profile to get updated subscription state
+    loadSession();
+  }, [loadSession]);
+
+  const handleWebViewCancel = useCallback(() => {
+    // User canceled - no action needed, just close WebView
+  }, []);
+
+  const handleWebViewClose = useCallback(() => {
+    setWebViewUrl(null);
+  }, []);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -145,6 +164,18 @@ export default function PremiumScreen() {
           <ActivityIndicator size="large" color="#737373" />
         </View>
       </SafeAreaView>
+    );
+  }
+
+  // Show WebView when URL is set
+  if (webViewUrl) {
+    return (
+      <StripeWebView
+        url={webViewUrl}
+        onClose={handleWebViewClose}
+        onSuccess={handleWebViewSuccess}
+        onCancel={handleWebViewCancel}
+      />
     );
   }
 
@@ -178,7 +209,7 @@ export default function PremiumScreen() {
             <Text style={styles.manageSubtitle}>
               You're a Premium member. Manage your subscription, payment method, and billing in Stripe's secure portal.
             </Text>
-            <ManageSubscriptionButton />
+            <ManageSubscriptionButton onOpenWebView={setWebViewUrl} />
             <Text style={styles.manageHint}>
               You can update your payment method, view invoices, or cancel your subscription there.
             </Text>

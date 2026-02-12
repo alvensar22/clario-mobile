@@ -1,10 +1,14 @@
 import { Crown } from 'lucide-react-native';
 import { useState } from 'react';
-import { Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Alert } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 
 import { api } from '@/services/api/client';
 
-export function ManageSubscriptionButton() {
+interface ManageSubscriptionButtonProps {
+  onOpenWebView: (url: string) => void;
+}
+
+export function ManageSubscriptionButton({ onOpenWebView }: ManageSubscriptionButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const handleManage = async () => {
@@ -13,10 +17,7 @@ export function ManageSubscriptionButton() {
       const res = await api.getPremiumPortalUrl();
       if (res.error) throw new Error(res.error);
       if (res.data?.url) {
-        const opened = await Linking.canOpenURL(res.data.url)
-          ? Linking.openURL(res.data.url)
-          : Promise.resolve(false);
-        if (!opened) throw new Error('Could not open link');
+        onOpenWebView(res.data.url);
         return;
       }
       throw new Error('No portal URL received');
