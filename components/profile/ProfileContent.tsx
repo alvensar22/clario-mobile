@@ -10,6 +10,7 @@ import {
 import type { ApiPublicProfile, ApiInterest, ApiPost, ApiFollowStatus } from '@/types/api';
 import { Avatar } from '@/components/feed/Avatar';
 import { PostCard } from '@/components/feed/PostCard';
+import { PremiumBadge } from '@/components/premium/PremiumBadge';
 import { ProfileFollowButton } from '@/components/profile/ProfileFollowButton';
 import { Button } from '@/components/ui/Button';
 
@@ -50,7 +51,14 @@ export function ProfileContent({
       <View style={styles.top}>
         <Avatar src={profile.avatar_url} fallback={displayName} size="xl" />
         <View style={styles.info}>
-          <Text style={styles.displayName}>{displayName}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.displayName}>{displayName}</Text>
+            {profile.is_premium ? (
+              <View style={styles.premiumBadge}>
+                <PremiumBadge size="sm" />
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.handle}>@{profile.username}</Text>
           {profile.bio ? (
             <Text style={styles.bio}>{profile.bio}</Text>
@@ -130,7 +138,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   info: { width: '100%', maxWidth: 400, marginTop: 20 },
-  displayName: { fontSize: 24, fontWeight: '600', color: '#fff', marginBottom: 4 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  displayName: { fontSize: 24, fontWeight: '600', color: '#fff' },
+  premiumBadge: {},
   handle: { fontSize: 14, color: '#a3a3a3', marginBottom: 12 },
   bio: { fontSize: 15, lineHeight: 22, color: '#d4d4d4', marginBottom: 16 },
   bioEmpty: { fontSize: 14, fontStyle: 'italic', color: '#737373', marginBottom: 16 },

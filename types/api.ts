@@ -20,6 +20,7 @@ export interface ApiUserProfile {
   avatar_url: string | null;
   bio: string | null;
   created_at: string;
+  is_premium?: boolean;
 }
 
 /** Public profile from GET /api/users/[username] */
@@ -29,6 +30,7 @@ export interface ApiPublicProfile {
   avatar_url: string | null;
   bio: string | null;
   created_at: string;
+  is_premium?: boolean;
 }
 
 export interface ApiInterest {
@@ -69,9 +71,11 @@ export interface ApiPost {
   user_id: string;
   content: string;
   media_url: string | null;
+  /** Parsed list of image URLs (use for display; fallback to [media_url] when absent) */
+  media_urls?: string[];
   interest_id: string | null;
   created_at: string;
-  author?: { username: string | null; avatar_url: string | null };
+  author?: { username: string | null; avatar_url: string | null; is_premium?: boolean };
   interest?: { name: string } | null;
   like_count?: number;
   comment_count?: number;
@@ -82,6 +86,8 @@ export interface ApiPost {
 export interface ApiUpdatePostBody {
   content?: string;
   media_url?: string | null;
+  /** Multiple image URLs (overwrites media_url) */
+  media_urls?: string[];
   interest_id?: string | null;
 }
 

@@ -24,10 +24,18 @@ interface PostEditModalProps {
   onSuccess: () => void;
 }
 
+function getInitialMediaUrls(post: ApiPost): string[] {
+  return post.media_urls?.length
+    ? post.media_urls
+    : post.media_url
+      ? [post.media_url]
+      : [];
+}
+
 export function PostEditModal({ post, onClose, onSuccess }: PostEditModalProps) {
   const [content, setContent] = useState(post.content);
   const [interestId, setInterestId] = useState<string | null>(post.interest_id ?? null);
-  const [mediaUrl, setMediaUrl] = useState<string | null>(post.media_url ?? null);
+  const [mediaUrls, setMediaUrls] = useState<string[]>(() => getInitialMediaUrls(post));
   const [interests, setInterests] = useState<ApiInterest[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +62,7 @@ export function PostEditModal({ post, onClose, onSuccess }: PostEditModalProps) 
     const res = await api.updatePost(post.id, {
       content: trimmed,
       interest_id: interestId ?? null,
-      media_url: mediaUrl ?? null,
+      media_urls: mediaUrls,
     });
     setSaving(false);
     if (res.error) {
@@ -62,7 +70,7 @@ export function PostEditModal({ post, onClose, onSuccess }: PostEditModalProps) 
       return;
     }
     onSuccess();
-  }, [post.id, content, interestId, mediaUrl, onSuccess]);
+  }, [post.id, content, interestId, mediaUrls, onSuccess]);
 
   return (
     <Modal visible transparent animationType="fade">
@@ -91,16 +99,20 @@ export function PostEditModal({ post, onClose, onSuccess }: PostEditModalProps) 
               maxLength={500}
               editable={!saving}
             />
-            {mediaUrl ? (
-              <View style={styles.previewWrap}>
-                <Image source={{ uri: mediaUrl }} style={styles.preview} contentFit="cover" />
-                <TouchableOpacity
-                  onPress={() => setMediaUrl(null)}
-                  style={styles.removeMedia}
-                  disabled={saving}>
-                  <MaterialIcons name="close" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
+            {mediaUrls.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaScroll} contentContainerStyle={styles.mediaScrollContent}>
+                {mediaUrls.map((url, i) => (
+                  <View key={url + i} style={styles.previewWrap}>
+                    <Image source={{ uri: url }} style={styles.preview} contentFit="cover" />
+                    <TouchableOpacity
+                      onPress={() => setMediaUrls((prev) => prev.filter((_, idx) => idx !== i))}
+                      style={styles.removeMedia}
+                      disabled={saving}>
+                      <MaterialIcons name="close" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
             ) : null}
             {!loading && (
               <View style={styles.interestSection}>
@@ -205,13 +217,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 0,
   },
-  previewWrap: { marginTop: 12, position: 'relative' },
-  preview: {
-    width: '100%',
-    aspectRatio: 16 / 10,
-    borderRadius: 12,
-    backgroundColor: '#262626',
-  },
+  mediaScroll: { marginTop: 12 },
+  mediaScrollContent: { gap: 10 },
+  previewWrap: { width: 180, aspectRatio: 16 / 10, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: '#262626' },
+  preview: { width: '100%', height: '100%' },
   removeMedia: {
     position: 'absolute',
     top: 8,

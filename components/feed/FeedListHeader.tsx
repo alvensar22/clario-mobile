@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
+import { PremiumUpgradeBanner } from '@/components/premium/PremiumUpgradeBanner';
 import { ComposerCard } from './ComposerCard';
 import { FeedEmpty } from './FeedEmpty';
 import type { FeedTab } from './FeedScreenHeader';
@@ -11,6 +12,7 @@ interface FeedListHeaderProps {
   refreshing: boolean;
   postsLength: number;
   tab: FeedTab;
+  isPremium?: boolean;
 }
 
 export function FeedListHeader({
@@ -20,7 +22,10 @@ export function FeedListHeader({
   refreshing,
   postsLength,
   tab,
+  isPremium = false,
 }: FeedListHeaderProps) {
+  const showUpgradeBanner = tab === 'interests' && !isPremium;
+
   return (
     <>
       {refreshing ? (
@@ -34,6 +39,7 @@ export function FeedListHeader({
           <ComposerCard currentUser={currentUser} />
         </View>
       ) : null}
+      {showUpgradeBanner ? <PremiumUpgradeBanner /> : null}
       {loading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color="#fff" />

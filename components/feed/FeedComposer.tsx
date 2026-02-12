@@ -14,6 +14,8 @@ import {
   ScrollView,
 } from 'react-native';
 
+const MAX_IMAGES = 4;
+
 import { api } from '@/services/api/client';
 import type { ApiInterest } from '@/types/api';
 import { Avatar } from './Avatar';
@@ -28,15 +30,15 @@ interface FeedComposerProps {
 
 export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposerProps) {
   const [content, setContent] = useState('');
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaUrls, setMediaUrls] = useState<string[]>([]);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [interestId, setInterestId] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showInterestPicker, setShowInterestPicker] = useState(false);
 
   const pickImage = async () => {
+    if (mediaUrls.length >= MAX_IMAGES) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       setError('Photo library access is required');
@@ -44,27 +46,30 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [16, 10],
+      allowsMultipleSelection: true,
       quality: 0.8,
+      selectionLimit: MAX_IMAGES - mediaUrls.length,
     });
-    if (result.canceled || !result.assets?.[0]) return;
+    if (result.canceled || !result.assets?.length) return;
     setError(null);
-    setMediaUri(result.assets[0].uri);
-    setUploading(true);
-    const res = await api.uploadPostImage(result.assets[0].uri, result.assets[0].fileName ?? 'image.jpg');
-    setUploading(false);
-    if (res.error) {
-      setError(res.error);
-      setMediaUri(null);
-      return;
+    const toAdd = result.assets.slice(0, MAX_IMAGES - mediaUrls.length);
+    for (let i = 0; i < toAdd.length; i++) {
+      const asset = toAdd[i];
+      setUploadingIndex(mediaUrls.length + i);
+      const res = await api.uploadPostImage(asset.uri, asset.fileName ?? 'image.jpg');
+      setUploadingIndex(null);
+      if (res.error) {
+        setError(res.error);
+        break;
+      }
+      if (res.data?.url) {
+        setMediaUrls((prev) => [...prev, res.data!.url!]);
+      }
     }
-    if (res.data?.url) setMediaUrl(res.data.url);
   };
 
-  const removeImage = () => {
-    setMediaUrl(null);
-    setMediaUri(null);
+  const removeImage = (index: number) => {
+    setMediaUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handlePost = async () => {
@@ -74,7 +79,7 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
     setPosting(true);
     const { error: err } = await api.createPost({
       content: trimmed,
-      media_url: mediaUrl ?? undefined,
+      media_urls: mediaUrls.length > 0 ? mediaUrls : undefined,
       interest_id: interestId ?? undefined,
     });
     setPosting(false);
@@ -83,8 +88,7 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
       return;
     }
     setContent('');
-    setMediaUrl(null);
-    setMediaUri(null);
+    setMediaUrls([]);
     setInterestId(null);
     onSuccess();
   };
@@ -108,13 +112,29 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
             multiline
             style={styles.input}
           />
-          {mediaUri ? (
-            <View style={styles.previewWrap}>
-              <Image source={{ uri: mediaUri }} style={styles.preview} contentFit="cover" />
-              <TouchableOpacity onPress={removeImage} style={styles.removeBtn}>
-                <Text style={styles.removeText}>×</Text>
-              </TouchableOpacity>
-            </View>
+          {mediaUrls.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.previewsScroll}
+              contentContainerStyle={styles.previewsContent}>
+              {mediaUrls.map((url, i) => (
+                <View key={url + i} style={styles.previewWrap}>
+                  <Image source={{ uri: url }} style={styles.preview} contentFit="cover" />
+                  <TouchableOpacity
+                    onPress={() => removeImage(i)}
+                    style={styles.removeBtn}
+                    disabled={posting}>
+                    <Text style={styles.removeText}>×</Text>
+                  </TouchableOpacity>
+                  {uploadingIndex === i && (
+                    <View style={styles.uploadingOverlay}>
+                      <ActivityIndicator size="small" color="#fff" />
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           ) : null}
         </View>
       </View>
@@ -123,10 +143,10 @@ export function FeedComposer({ currentUser, interests, onSuccess }: FeedComposer
         <View style={styles.toolbarLeft}>
           <TouchableOpacity
             onPress={pickImage}
-            disabled={uploading}
+            disabled={uploadingIndex !== null || mediaUrls.length >= MAX_IMAGES}
             style={styles.iconBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            {uploading ? (
+            {uploadingIndex !== null ? (
               <ActivityIndicator size="small" color="#737373" />
             ) : (
               <MaterialIcons name="image" size={22} color="#737373" />
@@ -214,15 +234,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     lineHeight: 24,
   },
+  previewsScroll: { marginTop: 16 },
+  previewsContent: { gap: 10 },
   previewWrap: {
-    marginTop: 16,
+    width: 160,
+    aspectRatio: 16 / 10,
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#262626',
     position: 'relative',
   },
-  preview: { width: '100%', aspectRatio: 16 / 10, backgroundColor: '#171717' },
+  preview: { width: '100%', height: '100%', backgroundColor: '#171717' },
+  uploadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   removeBtn: {
     position: 'absolute',
     top: 12,

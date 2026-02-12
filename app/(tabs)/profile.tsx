@@ -114,13 +114,25 @@ export default function ProfileTabScreen() {
     );
   }
 
+  const isPremium = profileData?.is_premium === true;
+
   return (
     <View style={styles.wrapper}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} hitSlop={12}>
-          <MaterialIcons name="logout" size={22} color="#f87171" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            onPress={() => router.push('/premium')}
+            style={styles.premiumLink}
+            activeOpacity={0.7}>
+            <Text style={styles.premiumLinkText}>
+              {isPremium ? 'Premium' : 'Upgrade to Premium'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} hitSlop={12}>
+            <MaterialIcons name="logout" size={22} color="#f87171" />
+          </TouchableOpacity>
+        </View>
       </View>
       <ProfileContent
         profile={profileData}
@@ -168,5 +180,8 @@ const styles = StyleSheet.create({
     borderBottomColor: '#262626',
   },
   headerTitle: { fontSize: 20, fontWeight: '600', color: '#fff' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  premiumLink: { paddingVertical: 6, paddingHorizontal: 10 },
+  premiumLinkText: { fontSize: 14, fontWeight: '500', color: '#fbbf24' },
   logoutBtn: { padding: 8 },
 });

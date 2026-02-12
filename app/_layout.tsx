@@ -20,9 +20,9 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="profile/[username]" options={{ title: 'Profile' }} />
-        <Stack.Screen name="profile/edit" options={{ title: 'Edit Profile' }} />
+        <Stack.Screen name="profile" options={{ title: 'Profile' }} />
         <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
+        <Stack.Screen name="premium" options={{ title: 'Premium' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="light" />

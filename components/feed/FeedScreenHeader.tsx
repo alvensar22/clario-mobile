@@ -1,3 +1,4 @@
+import { Crown } from 'lucide-react-native';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { LogoIcon } from '@/components/ui/LogoIcon';
@@ -13,9 +14,10 @@ const FEED_OPTIONS: { value: FeedTab; label: string }[] = [
 interface FeedScreenHeaderProps {
   tab: FeedTab;
   onTabChange: (tab: FeedTab) => void;
+  isPremium?: boolean;
 }
 
-export function FeedScreenHeader({ tab, onTabChange }: FeedScreenHeaderProps) {
+export function FeedScreenHeader({ tab, onTabChange, isPremium = false }: FeedScreenHeaderProps) {
   return (
     <View style={styles.header}>
       <View style={styles.logoRow}>
@@ -32,6 +34,9 @@ export function FeedScreenHeader({ tab, onTabChange }: FeedScreenHeaderProps) {
             <Text style={[styles.tabText, tab === opt.value && styles.tabTextActive]}>
               {opt.label}
             </Text>
+            {opt.value === 'interests' && !isPremium ? (
+              <Crown size={14} color="#fbbf24" strokeWidth={2} style={styles.tabCrown} />
+            ) : null}
           </TouchableOpacity>
         ))}
       </View>
@@ -50,8 +55,9 @@ const styles = StyleSheet.create({
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
   logoText: { fontSize: 20, fontWeight: '700', color: '#fff' },
   tabRow: { flexDirection: 'row', gap: 10 },
-  tab: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 9999 },
+  tab: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 9999 },
   tabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   tabText: { fontSize: 15, fontWeight: '500', color: '#737373' },
   tabTextActive: { color: '#fff' },
+  tabCrown: { marginLeft: 4 },
 });

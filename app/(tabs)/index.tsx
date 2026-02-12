@@ -85,12 +85,13 @@ export default function HomeScreen() {
       refreshing={refreshing}
       postsLength={posts.length}
       tab={tab}
+      isPremium={profile?.is_premium}
     />
   );
 
   return (
     <View style={styles.container}>
-      <FeedScreenHeader tab={tab} onTabChange={setTab} />
+      <FeedScreenHeader tab={tab} onTabChange={setTab} isPremium={profile?.is_premium} />
 
       <FlatList
         ref={listRef}

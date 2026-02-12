@@ -226,11 +226,27 @@ export const api = {
   createPost(body: {
     content: string;
     media_url?: string | null;
+    media_urls?: string[];
     interest_id?: string | null;
   }): Promise<ApiResult<ApiPost>> {
     return fetchApi<ApiPost>('/api/posts', {
       method: 'POST',
       body: JSON.stringify(body),
+    });
+  },
+
+  createCheckoutSession(
+    plan: 'monthly' | 'annual'
+  ): Promise<ApiResult<{ url: string }>> {
+    return fetchApi<{ url: string }>('/api/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    });
+  },
+
+  getPremiumPortalUrl(): Promise<ApiResult<{ url: string }>> {
+    return fetchApi<{ url: string }>('/api/premium/portal', {
+      method: 'POST',
     });
   },
 

@@ -67,6 +67,10 @@ Follow **production-grade standards, best practices, and scalable architecture**
 - Maintain proper spacing, typography, and hierarchy
 - Ensure accessibility (labels, touch targets, readability)
 
+## 🎯 Icons
+
+- Use **lucide-react-native** for new icons (project standard). Import from `lucide-react-native` (e.g. `Crown`, `ChevronRight`, `ArrowLeft`). Prefer Lucide over `@expo/vector-icons` when adding new UI icons.
+
 ## 🌐 API & Backend Integration
 
 - Use a centralized API service layer
