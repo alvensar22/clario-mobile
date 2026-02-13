@@ -1,5 +1,4 @@
 import { useRouter } from "expo-router";
-import { LogOutIcon } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,6 +8,7 @@ import {
   View,
 } from "react-native";
 
+import { AppTabHeader } from "@/components/AppTabHeader";
 import { ProfileContent } from "@/components/profile/ProfileContent";
 import { api } from "@/services/api/client";
 import { useAuthStore } from "@/store/auth";
@@ -122,27 +122,7 @@ export default function ProfileTabScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => router.push("/premium")}
-            style={styles.premiumLink}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.premiumLinkText}>
-              {isPremium ? "Premium" : "Upgrade to Premium"}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={styles.logoutBtn}
-            hitSlop={12}
-          >
-            <LogOutIcon size={22} color="#ffffff" strokeWidth={2} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <AppTabHeader showPremiumPill={false} />
       <ProfileContent
         profile={profileData}
         interests={interests}
@@ -154,6 +134,9 @@ export default function ProfileTabScreen() {
         onRefresh={onRefresh}
         refreshing={refreshing}
         onEditProfile={() => router.push("/profile/edit")}
+        onUpgradePremium={() => router.push("/premium")}
+        onLogout={handleLogout}
+        isPremium={isPremium}
       />
     </View>
   );
@@ -178,25 +161,4 @@ const styles = StyleSheet.create({
   retryBtn: { paddingVertical: 12, paddingHorizontal: 24 },
   retryText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   wrapper: { flex: 1, backgroundColor: "#000" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#262626",
-  },
-  headerTitle: { fontSize: 20, fontWeight: "600", color: "#fff" },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  premiumLink: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 9999,
-    borderWidth: 1.5,
-    borderColor: "rgba(251, 191, 36, 0.6)",
-  },
-  premiumLinkText: { fontSize: 14, fontWeight: "600", color: "#fbbf24" },
-  logoutBtn: { padding: 8 },
 });

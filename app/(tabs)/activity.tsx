@@ -3,17 +3,19 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
 
+import { AppTabHeader } from '@/components/AppTabHeader';
 import { ActivityList } from '@/components/activity/ActivityList';
+import { useAuthStore } from '@/store/auth';
 import { api } from '@/services/api/client';
 import type { ApiActivityItem } from '@/types/api';
 
 const PAGE_SIZE = 10;
 
 export default function ActivityScreen() {
+  const profile = useAuthStore((s) => s.profile);
   const [items, setItems] = useState<ApiActivityItem[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,8 @@ export default function ActivityScreen() {
   }, [hasMore, items.length]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
+      <AppTabHeader showPremiumPill={profile?.is_premium ?? false} />
       <View style={styles.header}>
         <Text style={styles.title}>Activity</Text>
         <Text style={styles.subtitle}>
@@ -82,7 +85,7 @@ export default function ActivityScreen() {
           refreshing={refreshing}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

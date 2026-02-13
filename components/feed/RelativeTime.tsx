@@ -13,7 +13,7 @@ export function RelativeTime({ isoDate, style }: RelativeTimeProps) {
   useEffect(() => {
     const update = () => setLabel(formatRelativeTime(isoDate));
     update();
-    const id = setInterval(update, 60 * 1000);
+    const id = setInterval(update, 30 * 1000);
     return () => clearInterval(id);
   }, [isoDate]);
 

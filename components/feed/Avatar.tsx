@@ -9,10 +9,12 @@ interface AvatarProps {
   src?: string | null;
   fallback?: string;
   size?: Size;
+  /** Override size with exact pixels (e.g. 44) when provided */
+  sizePx?: number;
 }
 
-export function Avatar({ src, fallback = '?', size = 'md' }: AvatarProps) {
-  const px = SIZES[size];
+export function Avatar({ src, fallback = '?', size = 'md', sizePx }: AvatarProps) {
+  const px = sizePx ?? SIZES[size];
   const initials = fallback
     .split(/\s+/)
     .map((n) => n[0])
@@ -29,7 +31,7 @@ export function Avatar({ src, fallback = '?', size = 'md' }: AvatarProps) {
           contentFit="cover"
         />
       ) : (
-        <Text style={[styles.initials, { fontSize: size === 'sm' ? 12 : size === 'md' ? 14 : size === 'lg' ? 18 : 24 }]}>
+        <Text style={[styles.initials, { fontSize: px <= 32 ? 12 : px <= 40 ? 14 : px <= 96 ? 18 : 24 }]}>
           {initials}
         </Text>
       )}

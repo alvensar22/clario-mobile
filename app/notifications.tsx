@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, MessageCircle, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, AtSign, Heart, MessageCircle, UserPlus } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -46,16 +46,32 @@ function formatNotificationMessage(item: ApiNotificationAggregated): string {
 function NotificationIcon({ type }: { type: ApiNotificationAggregated['type'] }) {
   const color = '#a78bfa';
   const size = 20;
+  let Icon = MessageCircle;
   switch (type) {
     case 'like':
-      return <Heart size={size} color={color} strokeWidth={2} fill={color} />;
+      Icon = Heart;
+      break;
     case 'comment':
-      return <MessageCircle size={size} color={color} strokeWidth={2} />;
+      Icon = MessageCircle;
+      break;
     case 'follow':
-      return <UserPlus size={size} color={color} strokeWidth={2} />;
+      Icon = UserPlus;
+      break;
+    case 'mention':
+      Icon = AtSign;
+      break;
     default:
-      return <MessageCircle size={size} color={color} strokeWidth={2} />;
+      Icon = MessageCircle;
   }
+  return (
+    <View style={styles.typeIconWrap}>
+      {type === 'like' ? (
+        <Heart size={size} color={color} strokeWidth={2} fill={color} />
+      ) : (
+        <Icon size={size} color={color} strokeWidth={2} />
+      )}
+    </View>
+  );
 }
 
 function NotificationRow({
@@ -73,9 +89,15 @@ function NotificationRow({
       style={[styles.row, isUnread && styles.rowUnread]}
       onPress={onPress}
       activeOpacity={0.7}>
+      {isUnread ? <View style={styles.unreadDot} /> : null}
       <View style={styles.avatarWrap}>
         {firstActor ? (
-          <Avatar username={firstActor.username} avatarUrl={firstActor.avatar_url} size={44} />
+          <Avatar
+            src={firstActor.avatar_url}
+            fallback={firstActor.username ?? '?'}
+            size="md"
+            sizePx={44}
+          />
         ) : (
           <View style={styles.avatarPlaceholder} />
         )}
@@ -85,7 +107,7 @@ function NotificationRow({
           {formatNotificationMessage(item)}
         </Text>
         <Text style={styles.time}>
-          <RelativeTime date={item.created_at} />
+          <RelativeTime isoDate={item.created_at} />
         </Text>
       </View>
       <View style={styles.iconWrap}>
@@ -98,11 +120,13 @@ function NotificationRow({
 export default function NotificationsScreen() {
   const router = useRouter();
   const version = useNotificationsStore((s) => s.version);
+  const unreadCount = useNotificationsStore((s) => s.unreadCount);
   const setUnreadCount = useNotificationsStore((s) => s.setUnreadCount);
   const [items, setItems] = useState<ApiNotificationAggregated[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
 
   const fetchPage = useCallback(async (offset: number) => {
     const { data, error } = await api.getNotifications(PAGE_SIZE, offset);
@@ -165,6 +189,13 @@ export default function NotificationsScreen() {
   const handlePress = useCallback(
     async (item: ApiNotificationAggregated) => {
       await api.markNotificationRead(item.ids);
+      setItems((prev) =>
+        prev.map((n) =>
+          n.ids.some((id) => item.ids.includes(id))
+            ? { ...n, read_at: new Date().toISOString() }
+            : n
+        )
+      );
       api.getNotificationUnreadCount().then(({ data }) => {
         if (data?.count != null) setUnreadCount(data.count);
       });
@@ -186,6 +217,34 @@ export default function NotificationsScreen() {
 
   const keyExtractor = useCallback((item: ApiNotificationAggregated) => item.ids[0] ?? item.created_at, []);
 
+  const handleMarkAllRead = useCallback(async () => {
+    if ((unreadCount ?? 0) === 0 || markingAllRead) return;
+    setMarkingAllRead(true);
+    const { error } = await api.markNotificationRead();
+    if (!error) {
+      setUnreadCount(0);
+      setItems((prev) =>
+        prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
+      );
+    }
+    setMarkingAllRead(false);
+  }, [unreadCount, markingAllRead, setUnreadCount]);
+
+  const markAllReadHeader =
+    (unreadCount ?? 0) > 0 ? (
+      <TouchableOpacity
+        style={styles.markAllReadRow}
+        onPress={handleMarkAllRead}
+        disabled={markingAllRead}
+        activeOpacity={0.7}>
+        {markingAllRead ? (
+          <ActivityIndicator size="small" color="#a78bfa" />
+        ) : (
+          <Text style={styles.markAllReadText}>Mark all read</Text>
+        )}
+      </TouchableOpacity>
+    ) : null;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -198,19 +257,26 @@ export default function NotificationsScreen() {
 
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#737373" />
+          <ActivityIndicator size="large" color="#ffffff" />
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
+        <>
+          {markAllReadHeader}
+          <FlatList
+            data={items}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            contentContainerStyle={[styles.list, items.length === 0 && styles.listEmpty]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#fff"
+              tintColor="#ffffff"
+              colors={['#ffffff']}
+              title="Pull to refresh"
+              titleColor="#a3a3a3"
+              progressViewOffset={Platform.OS === 'android' ? 80 : 0}
+              progressBackgroundColor={Platform.OS === 'android' ? '#262626' : undefined}
             />
           }
           onEndReached={onLoadMore}
@@ -223,7 +289,8 @@ export default function NotificationsScreen() {
               </Text>
             </View>
           }
-        />
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -242,8 +309,19 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 8, minWidth: 40 },
   title: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  list: { paddingBottom: Platform.OS === 'android' ? 24 : 48 },
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' },
+  markAllReadRow: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#262626',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  markAllReadText: { fontSize: 15, fontWeight: '600', color: '#a78bfa' },
+  list: { paddingTop: 12, paddingBottom: Platform.OS === 'android' ? 24 : 48 },
+  listEmpty: { flexGrow: 1, paddingTop: 24 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -251,8 +329,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#262626',
+    position: 'relative',
   },
-  rowUnread: { backgroundColor: 'rgba(167, 139, 250, 0.06)' },
+  rowUnread: { backgroundColor: 'rgba(167, 139, 250, 0.08)' },
+  unreadDot: {
+    position: 'absolute',
+    left: 8,
+    top: '50%',
+    marginTop: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#a78bfa',
+  },
   avatarWrap: { marginRight: 14 },
   avatarPlaceholder: {
     width: 44,
@@ -264,6 +353,14 @@ const styles = StyleSheet.create({
   message: { fontSize: 15, color: '#fff', marginBottom: 2 },
   time: { fontSize: 13, color: '#737373' },
   iconWrap: { marginLeft: 12 },
+  typeIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   empty: {
     paddingVertical: 48,
     paddingHorizontal: 32,

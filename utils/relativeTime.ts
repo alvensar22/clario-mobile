@@ -1,4 +1,4 @@
-/** Format date as relative time (e.g. "2h", "5m", "1d") */
+/** Format date as relative time (e.g. "now", "2h", "5m", "1d") */
 export function formatRelativeTime(isoDate: string): string {
   const date = new Date(isoDate);
   const now = new Date();
