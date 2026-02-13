@@ -4,7 +4,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  TouchableOpacity,
 } from 'react-native';
 
 import type { ApiPublicProfile, ApiInterest, ApiPost, ApiFollowStatus } from '@/types/api';
@@ -25,9 +24,6 @@ interface ProfileContentProps {
   onRefresh: () => void | Promise<void>;
   refreshing?: boolean;
   onEditProfile?: () => void;
-  onUpgradePremium?: () => void;
-  onLogout?: () => void;
-  isPremium?: boolean;
 }
 
 export function ProfileContent({
@@ -41,9 +37,6 @@ export function ProfileContent({
   onRefresh,
   refreshing = false,
   onEditProfile,
-  onUpgradePremium,
-  onLogout,
-  isPremium = false,
 }: ProfileContentProps) {
   const displayName = profile.username ?? 'unknown';
 
@@ -101,30 +94,6 @@ export function ProfileContent({
               onPress={onEditProfile}
               style={styles.editBtn}
             />
-          )}
-          {isOwnProfile && (onUpgradePremium != null || onLogout != null) && (
-            <View style={styles.actionsRow}>
-              {onUpgradePremium != null && (
-                <TouchableOpacity
-                  onPress={onUpgradePremium}
-                  style={styles.premiumLink}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.premiumLinkText}>
-                    {isPremium ? 'Premium' : 'Upgrade to Premium'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {onLogout != null && (
-                <TouchableOpacity
-                  onPress={onLogout}
-                  style={styles.logoutBtn}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.logoutText}>Log out</Text>
-                </TouchableOpacity>
-              )}
-            </View>
           )}
         </View>
       </View>
@@ -187,23 +156,7 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, color: '#a3a3a3' },
   interestEmpty: { fontSize: 13, fontStyle: 'italic', color: '#737373', marginBottom: 16 },
-  editBtn: { alignSelf: 'flex-start', marginBottom: 16 },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 8,
-  },
-  premiumLink: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 9999,
-    borderWidth: 1.5,
-    borderColor: 'rgba(251, 191, 36, 0.6)',
-  },
-  premiumLinkText: { fontSize: 14, fontWeight: '600', color: '#fbbf24' },
-  logoutBtn: { paddingVertical: 10, paddingHorizontal: 16 },
-  logoutText: { fontSize: 15, fontWeight: '500', color: '#f87171' },
+  editBtn: { alignSelf: 'flex-start' },
   postsSection: {
     borderTopWidth: 1,
     borderTopColor: '#262626',

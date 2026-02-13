@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { LogOutIcon } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -122,7 +123,14 @@ export default function ProfileTabScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <AppTabHeader showPremiumPill={false} />
+      <AppTabHeader
+        showPremiumPill={isPremium}
+        rightTrailingElement={
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutIconBtn} hitSlop={12}>
+            <LogOutIcon size={22} color="#ffffff" strokeWidth={2} />
+          </TouchableOpacity>
+        }
+      />
       <ProfileContent
         profile={profileData}
         interests={interests}
@@ -134,9 +142,6 @@ export default function ProfileTabScreen() {
         onRefresh={onRefresh}
         refreshing={refreshing}
         onEditProfile={() => router.push("/profile/edit")}
-        onUpgradePremium={() => router.push("/premium")}
-        onLogout={handleLogout}
-        isPremium={isPremium}
       />
     </View>
   );
@@ -161,4 +166,5 @@ const styles = StyleSheet.create({
   retryBtn: { paddingVertical: 12, paddingHorizontal: 24 },
   retryText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   wrapper: { flex: 1, backgroundColor: "#000" },
+  logoutIconBtn: { padding: 8 },
 });

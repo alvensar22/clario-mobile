@@ -13,9 +13,11 @@ import { useNotificationsStore } from '@/store/notifications';
 export interface AppTabHeaderProps {
   /** Show premium pill next to logo (e.g. on Home) */
   showPremiumPill?: boolean;
+  /** Optional element rendered right-most (e.g. logout icon on profile) */
+  rightTrailingElement?: React.ReactNode;
 }
 
-export function AppTabHeader({ showPremiumPill = false }: AppTabHeaderProps) {
+export function AppTabHeader({ showPremiumPill = false, rightTrailingElement }: AppTabHeaderProps) {
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
@@ -61,6 +63,7 @@ export function AppTabHeader({ showPremiumPill = false }: AppTabHeaderProps) {
               />
             </TouchableOpacity>
           ) : null}
+          {rightTrailingElement ?? null}
         </View>
       </View>
     </View>
