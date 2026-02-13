@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import type { ApiUser, ApiUserProfile } from '@/types/api';
 import { api } from '@/services/api/client';
 import { setTokens, clearTokens } from '@/store/auth-tokens';
+import { useNotificationsStore } from '@/store/notifications';
 
 export { getAccessToken } from '@/store/auth-tokens';
 
@@ -66,6 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     await api.signOut();
     await clearTokens();
+    useNotificationsStore.getState().setUnreadCount(null);
     set({ user: null, profile: null });
   },
 

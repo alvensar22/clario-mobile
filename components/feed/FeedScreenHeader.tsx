@@ -1,8 +1,12 @@
-import { Crown } from 'lucide-react-native';
+import { Crown, Bell } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { PremiumPill } from '@/components/premium/PremiumPill';
 import { LogoIcon } from '@/components/ui/LogoIcon';
+import { api } from '@/services/api/client';
+import { useNotificationsStore } from '@/store/notifications';
 
 export type FeedTab = 'explore' | 'following' | 'interests';
 
@@ -19,12 +23,36 @@ interface FeedScreenHeaderProps {
 }
 
 export function FeedScreenHeader({ tab, onTabChange, isPremium = false }: FeedScreenHeaderProps) {
+  const router = useRouter();
+  const unreadCount = useNotificationsStore((s) => s.unreadCount);
+  const setUnreadCount = useNotificationsStore((s) => s.setUnreadCount);
+
+  useEffect(() => {
+    api.getNotificationUnreadCount().then(({ data }) => {
+      if (data?.count != null) setUnreadCount(data.count);
+    });
+  }, [setUnreadCount]);
+
   return (
     <View style={styles.header}>
       <View style={styles.logoRow}>
-        <LogoIcon size={28} color="#fff" />
-        <Text style={styles.logoText}>clario</Text>
-        {isPremium ? <PremiumPill /> : null}
+        <View style={styles.logoLeft}>
+          <LogoIcon size={28} color="#fff" />
+          <Text style={styles.logoText}>clario</Text>
+          {isPremium ? <PremiumPill /> : null}
+        </View>
+        <TouchableOpacity
+            onPress={() => router.push('/notifications')}
+            hitSlop={12}
+            style={styles.bellBtn}
+            activeOpacity={0.7}>
+            <Bell size={24} color="#fff" strokeWidth={2} />
+            {unreadCount != null && unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            ) : null}
+        </TouchableOpacity>
       </View>
       <View style={styles.tabRow}>
         {FEED_OPTIONS.map((opt) => (
@@ -54,8 +82,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#262626',
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    justifyContent: 'space-between',
+  },
+  logoLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   logoText: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  bellBtn: { padding: 8, position: 'relative' },
+  badge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
   tabRow: { flexDirection: 'row', gap: 10 },
   tab: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 18, borderRadius: 9999 },
   tabActive: { backgroundColor: 'rgba(255,255,255,0.12)' },

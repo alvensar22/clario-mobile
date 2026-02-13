@@ -18,6 +18,8 @@ import type {
   ApiSearchResult,
   ApiActivityResponse,
   ApiComment,
+  ApiNotificationsResponse,
+  ApiNotificationUnreadCount,
 } from '@/types/api';
 import { API_BASE_URL } from '@/utils/env';
 import { getAccessToken } from '@/store/auth-tokens';
@@ -247,6 +249,32 @@ export const api = {
   getPremiumPortalUrl(): Promise<ApiResult<{ url: string }>> {
     return fetchApi<{ url: string }>('/api/premium/portal', {
       method: 'POST',
+    });
+  },
+
+  /** Register Expo push token for push notifications (likes, comments, follows). */
+  registerExpoPushToken(token: string): Promise<ApiResult<{ success: boolean }>> {
+    return fetchApi<{ success: boolean }>('/api/notifications/push/expo', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  getNotifications(limit = 20, offset = 0): Promise<ApiResult<ApiNotificationsResponse>> {
+    return fetchApi<ApiNotificationsResponse>(
+      `/api/notifications?limit=${limit}&offset=${offset}`
+    );
+  },
+
+  getNotificationUnreadCount(): Promise<ApiResult<ApiNotificationUnreadCount>> {
+    return fetchApi<ApiNotificationUnreadCount>('/api/notifications/unread-count');
+  },
+
+  markNotificationRead(id?: string | string[]): Promise<ApiResult<{ success: boolean }>> {
+    const body = id == null ? {} : typeof id === 'string' ? { id } : { ids: id };
+    return fetchApi<{ success: boolean }>('/api/notifications/read', {
+      method: 'POST',
+      body: JSON.stringify(body),
     });
   },
 

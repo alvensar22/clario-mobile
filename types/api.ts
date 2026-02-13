@@ -144,6 +144,32 @@ export interface ApiActivityResponse {
   hasMore: boolean;
 }
 
+/** Notification type (like, comment, follow, mention) */
+export type ApiNotificationType = 'like' | 'comment' | 'follow' | 'mention';
+
+/** Aggregated notification item from GET /api/notifications */
+export interface ApiNotificationAggregated {
+  ids: string[];
+  type: ApiNotificationType;
+  post_id: string | null;
+  comment_id: string | null;
+  actors: { id: string; username: string | null; avatar_url: string | null }[];
+  total_count: number;
+  read_at: string | null;
+  created_at: string;
+}
+
+/** Response from GET /api/notifications */
+export interface ApiNotificationsResponse {
+  notifications: ApiNotificationAggregated[];
+  hasMore: boolean;
+}
+
+/** Response from GET /api/notifications/unread-count */
+export interface ApiNotificationUnreadCount {
+  count: number;
+}
+
 export interface ApiComment {
   id: string;
   post_id: string;
