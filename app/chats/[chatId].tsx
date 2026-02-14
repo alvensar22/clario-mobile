@@ -12,22 +12,25 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Image,
   Modal,
   ScrollView,
   Pressable,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/services/api/client';
 import type { ApiChatMessage } from '@/types/api';
 import { Avatar } from '@/components/feed/Avatar';
+import { ImagePreviewModal } from '@/components/feed/ImagePreviewModal';
 import { RelativeTime } from '@/components/feed/RelativeTime';
 import { useAuthStore } from '@/store/auth';
 import { useChatStore } from '@/store/chat';
 import { useChatMessagesRealtime } from '@/hooks/useChatMessagesRealtime';
 
 const MAX_IMAGES = 5;
+const MEDIA_GRID_SIZE = 220;
+const MEDIA_GAP = 2;
 
 const EMOJI_GRID = [
   '❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🙏', '😊', '🥺',
@@ -43,6 +46,7 @@ function MessageBubble({
   username,
   isFirstInGroup,
   isLastInGroup,
+  onPressImage,
 }: {
   message: ApiChatMessage;
   isFromMe: boolean;
@@ -52,9 +56,11 @@ function MessageBubble({
   username: string;
   isFirstInGroup: boolean;
   isLastInGroup: boolean;
+  onPressImage?: (images: string[], index: number) => void;
 }) {
   const urls = message.media_urls?.length ? message.media_urls : [];
   const hasText = (message.content ?? '').trim().length > 0;
+  const n = urls.length;
 
   const bubbleRadius = (): object => {
     if (isFromMe) {
@@ -98,10 +104,58 @@ function MessageBubble({
             </View>
           )}
           {urls.length > 0 && (
-            <View style={styles.mediaWrap}>
-              {urls.map((url) => (
-                <Image key={url} source={{ uri: url }} style={styles.mediaImage} resizeMode="cover" />
-              ))}
+            <View style={styles.mediaGrid}>
+              {n === 1 && (
+                <TouchableOpacity onPress={() => onPressImage?.(urls, 0)} style={styles.mediaCell1} activeOpacity={0.95}>
+                  <Image source={{ uri: urls[0] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                </TouchableOpacity>
+              )}
+              {n === 2 && (
+                <View style={styles.mediaRow2}>
+                  <TouchableOpacity onPress={() => onPressImage?.(urls, 0)} style={styles.mediaCellHalf} activeOpacity={0.95}>
+                    <Image source={{ uri: urls[0] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  </TouchableOpacity>
+                  <View style={styles.mediaGap} />
+                  <TouchableOpacity onPress={() => onPressImage?.(urls, 1)} style={styles.mediaCellHalf} activeOpacity={0.95}>
+                    <Image source={{ uri: urls[1] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              {n === 3 && (
+                <View style={styles.mediaRow3}>
+                  <TouchableOpacity onPress={() => onPressImage?.(urls, 0)} style={styles.mediaCellLeft3} activeOpacity={0.95}>
+                    <Image source={{ uri: urls[0] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  </TouchableOpacity>
+                  <View style={styles.mediaGapVertical} />
+                  <View style={styles.mediaRight3}>
+                    <TouchableOpacity onPress={() => onPressImage?.(urls, 1)} style={styles.mediaCellRightTop} activeOpacity={0.95}>
+                      <Image source={{ uri: urls[1] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    </TouchableOpacity>
+                    <View style={styles.mediaGap} />
+                    <TouchableOpacity onPress={() => onPressImage?.(urls, 2)} style={styles.mediaCellRightBottom} activeOpacity={0.95}>
+                      <Image source={{ uri: urls[2] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              {n >= 4 && (
+                <View style={styles.mediaGrid4}>
+                  {urls.slice(0, 4).map((uri, i) => (
+                    <TouchableOpacity
+                      key={uri + i}
+                      onPress={() => onPressImage?.(urls, i)}
+                      style={[styles.mediaCell4, (i === 1 || i === 3) && styles.mediaCell4Right, i >= 2 && styles.mediaCell4Bottom]}
+                      activeOpacity={0.95}>
+                      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                      {i === 3 && n > 4 && (
+                        <View style={styles.mediaMoreOverlay}>
+                          <Text style={styles.mediaMoreText}>+{n - 4}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
           {hasText && <Text style={styles.bubbleText}>{message.content}</Text>}
@@ -143,6 +197,7 @@ export default function ChatConversationScreen() {
   const [pendingImages, setPendingImages] = useState<
     { id: string; preview: string; url?: string; uploading: boolean }[]
   >([]);
+  const [imagePreview, setImagePreview] = useState<{ images: string[]; initialIndex: number } | null>(null);
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
@@ -277,15 +332,17 @@ export default function ChatConversationScreen() {
 
   const reversedMessages = [...messages].reverse();
 
+  const handlePressMessageImage = useCallback((images: string[], index: number) => {
+    setImagePreview({ images, initialIndex: index });
+  }, []);
+
   const renderItem = useCallback(
     ({ item, index }: { item: ApiChatMessage; index: number }) => {
       const next = reversedMessages[index + 1]; // older message (above on screen)
       const prev = reversedMessages[index - 1]; // newer message (below on screen)
       const nextSameSender = next?.sender_id === item.sender_id;
       const prevSameSender = prev?.sender_id === item.sender_id;
-      // Chronological first = oldest in group = top of group = no next same sender
       const isFirstInGroup = !nextSameSender;
-      // Chronological last = newest in group = bottom of group = no prev same sender
       const isLastInGroup = !prevSameSender;
       const showAvatar = !isFromMe(item) && isLastInGroup;
 
@@ -299,10 +356,11 @@ export default function ChatConversationScreen() {
           username={username}
           isFirstInGroup={isFirstInGroup}
           isLastInGroup={isLastInGroup}
+          onPressImage={handlePressMessageImage}
         />
       );
     },
-    [recipientLastReadAt, reversedMessages, avatarUrl, username]
+    [recipientLastReadAt, reversedMessages, avatarUrl, username, handlePressMessageImage]
   );
 
   const keyExtractor = useCallback((item: ApiChatMessage) => item.id, []);
@@ -459,6 +517,14 @@ export default function ChatConversationScreen() {
               </Pressable>
             </Pressable>
           </Modal>
+          {imagePreview && (
+            <ImagePreviewModal
+              visible={!!imagePreview}
+              images={imagePreview.images}
+              initialIndex={imagePreview.initialIndex}
+              onClose={() => setImagePreview(null)}
+            />
+          )}
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -510,8 +576,23 @@ const styles = StyleSheet.create({
   replyPreviewMe: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.5)' },
   replyPreviewThem: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.4)' },
   replyText: { fontSize: 13, color: 'rgba(255,255,255,0.9)' },
-  mediaWrap: { marginBottom: 4 },
-  mediaImage: { width: 200, height: 200, borderRadius: 12, marginTop: 4 },
+  mediaGrid: { marginBottom: 4, width: MEDIA_GRID_SIZE, overflow: 'hidden', borderRadius: 10 },
+  mediaCell1: { width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden' },
+  mediaRow2: { flexDirection: 'row', width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75 },
+  mediaCellHalf: { width: (MEDIA_GRID_SIZE - MEDIA_GAP) / 2, height: MEDIA_GRID_SIZE * 0.75, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden' },
+  mediaGap: { width: MEDIA_GAP, height: MEDIA_GAP },
+  mediaGapVertical: { width: MEDIA_GAP, height: MEDIA_GAP },
+  mediaRow3: { flexDirection: 'row', width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75 },
+  mediaCellLeft3: { width: (MEDIA_GRID_SIZE - MEDIA_GAP) / 2, height: MEDIA_GRID_SIZE * 0.75, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden' },
+  mediaRight3: { width: (MEDIA_GRID_SIZE - MEDIA_GAP) / 2, height: MEDIA_GRID_SIZE * 0.75, flexDirection: 'column', marginLeft: MEDIA_GAP },
+  mediaCellRightTop: { width: '100%', height: ((MEDIA_GRID_SIZE * 0.75) - MEDIA_GAP) / 2, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden', marginBottom: MEDIA_GAP },
+  mediaCellRightBottom: { width: '100%', height: ((MEDIA_GRID_SIZE * 0.75) - MEDIA_GAP) / 2, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden' },
+  mediaGrid4: { flexDirection: 'row', flexWrap: 'wrap', width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75 },
+  mediaCell4: { width: (MEDIA_GRID_SIZE - MEDIA_GAP) / 2, height: (MEDIA_GRID_SIZE * 0.75 - MEDIA_GAP) / 2, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden', marginRight: MEDIA_GAP, marginBottom: MEDIA_GAP },
+  mediaCell4Right: { marginRight: 0 },
+  mediaCell4Bottom: { marginBottom: 0 },
+  mediaMoreOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  mediaMoreText: { fontSize: 18, fontWeight: '700', color: '#fff' },
   bubbleText: { fontSize: 15, color: '#fff', marginBottom: 0 },
   bubbleFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, paddingHorizontal: 4 },
   bubbleTime: { fontSize: 11 },
