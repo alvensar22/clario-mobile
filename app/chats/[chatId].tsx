@@ -1,4 +1,5 @@
-import { ArrowLeft, Heart, Send } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ArrowLeft, Heart, ImagePlus, Send, Smile, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -12,6 +13,9 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Modal,
+  ScrollView,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +26,13 @@ import { RelativeTime } from '@/components/feed/RelativeTime';
 import { useAuthStore } from '@/store/auth';
 import { useChatStore } from '@/store/chat';
 import { useChatMessagesRealtime } from '@/hooks/useChatMessagesRealtime';
+
+const MAX_IMAGES = 5;
+
+const EMOJI_GRID = [
+  '❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🙏', '😊', '🥺',
+  '😍', '🤔', '😎', '🥳', '😭', '🤣', '💯', '✨', '🎉', '💪',
+];
 
 function MessageBubble({
   message,
@@ -128,7 +139,12 @@ export default function ChatConversationScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [input, setInput] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [pendingImages, setPendingImages] = useState<
+    { id: string; preview: string; url?: string; uploading: boolean }[]
+  >([]);
   const listRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
 
   const loadMessages = useCallback(async () => {
     if (!chatId) return;
@@ -169,10 +185,18 @@ export default function ChatConversationScreen() {
 
   const sendMessage = useCallback(async () => {
     const content = (input ?? '').trim();
-    if (!content || !chatId || sending) return;
+    const hasContent = content || pendingImages.length > 0;
+    const allUploaded = pendingImages.every((p) => p.url);
+    if (!hasContent || !chatId || sending || !allUploaded) return;
+
     setSending(true);
+    const urls = pendingImages.map((p) => p.url).filter((u): u is string => !!u);
+    setPendingImages([]);
     setInput('');
-    const { data, error } = await api.sendChatMessage(chatId, { content });
+    const { data, error } = await api.sendChatMessage(chatId, {
+      ...(content ? { content } : {}),
+      ...(urls.length ? { media_urls: urls } : {}),
+    });
     setSending(false);
     if (error) {
       setInput(content);
@@ -184,7 +208,45 @@ export default function ChatConversationScreen() {
         return [...prev, data];
       });
     }
-  }, [input, chatId, sending]);
+  }, [input, chatId, sending, pendingImages]);
+
+  const pickImages = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets?.length) return;
+    const remaining = MAX_IMAGES - pendingImages.length;
+    const toAdd = result.assets.slice(0, remaining).map((asset) => ({
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      preview: asset.uri,
+      uploading: true as const,
+    }));
+    setPendingImages((prev) => [...prev, ...toAdd].slice(0, MAX_IMAGES));
+    for (let i = 0; i < toAdd.length; i++) {
+      const asset = result.assets[i];
+      const itemId = toAdd[i]?.id;
+      if (!asset?.uri || !itemId) continue;
+      const { data: uploadData } = await api.uploadChatImage(asset.uri);
+      setPendingImages((prev) =>
+        prev.map((p) =>
+          p.id === itemId && p.uploading ? { ...p, url: uploadData?.url, uploading: false } : p
+        )
+      );
+    }
+  }, [pendingImages.length]);
+
+  const removePendingImage = useCallback((index: number) => {
+    setPendingImages((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const insertEmoji = useCallback((emoji: string) => {
+    setInput((prev) => prev + emoji);
+    inputRef.current?.focus();
+  }, []);
 
   const sendHeart = useCallback(async () => {
     if (!chatId || sending) return;
@@ -301,8 +363,46 @@ export default function ChatConversationScreen() {
               </View>
             }
           />
+          {pendingImages.length > 0 && (
+            <View style={styles.pendingImagesRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pendingImagesScroll}>
+                {pendingImages.map((item, idx) => (
+                  <View key={item.id} style={styles.pendingImageWrap}>
+                    <Image source={{ uri: item.url ?? item.preview }} style={styles.pendingImage} resizeMode="cover" />
+                    {item.uploading && (
+                      <View style={styles.pendingImageOverlay}>
+                        <ActivityIndicator size="small" color="#fff" />
+                      </View>
+                    )}
+                    <TouchableOpacity
+                      onPress={() => removePendingImage(idx)}
+                      style={styles.pendingImageRemove}
+                      hitSlop={8}>
+                      <X size={14} color="#fff" strokeWidth={2} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
           <View style={styles.inputRow}>
+            <TouchableOpacity
+              onPress={pickImages}
+              disabled={pendingImages.length >= MAX_IMAGES}
+              style={styles.actionBtn}
+              activeOpacity={0.7}
+              accessibilityLabel="Add image">
+              <ImagePlus size={22} color={pendingImages.length >= MAX_IMAGES ? '#525252' : '#fff'} strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowEmojiPicker((v) => !v)}
+              style={[styles.actionBtn, showEmojiPicker && styles.emojiBtnActive]}
+              activeOpacity={0.7}
+              accessibilityLabel="Insert emoji">
+              <Smile size={22} color={showEmojiPicker ? '#3797f0' : '#fff'} strokeWidth={2} />
+            </TouchableOpacity>
             <TextInput
+              ref={inputRef}
               style={styles.input}
               placeholder="Message..."
               placeholderTextColor="#737373"
@@ -312,10 +412,10 @@ export default function ChatConversationScreen() {
               maxLength={2000}
               editable={!sending}
             />
-            {input.trim() ? (
+            {input.trim() || pendingImages.length > 0 ? (
               <TouchableOpacity
                 onPress={sendMessage}
-                disabled={sending}
+                disabled={sending || pendingImages.some((p) => p.uploading)}
                 style={styles.actionBtn}
                 activeOpacity={0.7}>
                 {sending ? (
@@ -338,6 +438,27 @@ export default function ChatConversationScreen() {
               </TouchableOpacity>
             )}
           </View>
+          <Modal
+            visible={showEmojiPicker}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowEmojiPicker(false)}>
+            <Pressable style={styles.emojiBackdrop} onPress={() => setShowEmojiPicker(false)}>
+              <Pressable style={styles.emojiPanel} onPress={(e) => e.stopPropagation()}>
+                <View style={styles.emojiGrid}>
+                  {EMOJI_GRID.map((emoji) => (
+                    <TouchableOpacity
+                      key={emoji}
+                      style={styles.emojiCell}
+                      onPress={() => insertEmoji(emoji)}
+                      activeOpacity={0.7}>
+                      <Text style={styles.emojiText}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -423,6 +544,56 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  emojiBtnActive: {},
+  pendingImagesRow: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 },
+  pendingImagesScroll: { flexDirection: 'row', gap: 8 },
+  pendingImageWrap: { position: 'relative', width: 56, height: 56, borderRadius: 8, overflow: 'hidden' },
+  pendingImage: { width: 56, height: 56, borderRadius: 8 },
+  pendingImageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingImageRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#262626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  emojiPanel: {
+    backgroundColor: '#1a1a1a',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 12,
+    paddingTop: 16,
+    paddingBottom: 32,
+    maxHeight: 280,
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 4,
+  },
+  emojiCell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+  },
+  emojiText: { fontSize: 28 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: '#f87171', fontSize: 16 },
 });
