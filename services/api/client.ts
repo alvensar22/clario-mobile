@@ -20,6 +20,10 @@ import type {
   ApiComment,
   ApiNotificationsResponse,
   ApiNotificationUnreadCount,
+  ApiChatsResponse,
+  ApiChatUnreadCount,
+  ApiChatMessagesResponse,
+  ApiChatMessage,
 } from '@/types/api';
 import { API_BASE_URL } from '@/utils/env';
 import { getAccessToken } from '@/store/auth-tokens';
@@ -314,5 +318,82 @@ export const api = {
       error = text || res.statusText;
     }
     return { data, error, status: res.status };
+  },
+
+  getChats(limit = 20, offset = 0): Promise<ApiResult<ApiChatsResponse>> {
+    return fetchApi<ApiChatsResponse>(`/api/chats?limit=${limit}&offset=${offset}`);
+  },
+
+  getChatUnreadCount(): Promise<ApiResult<ApiChatUnreadCount>> {
+    return fetchApi<ApiChatUnreadCount>('/api/chats/unread-count');
+  },
+
+  createOrGetChat(userId: string): Promise<ApiResult<{ chatId: string }>> {
+    return fetchApi<{ chatId: string }>('/api/chats', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  },
+
+  getChatMessages(
+    chatId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<ApiResult<ApiChatMessagesResponse>> {
+    return fetchApi<ApiChatMessagesResponse>(
+      `/api/chats/${encodeURIComponent(chatId)}/messages?limit=${limit}&offset=${offset}`
+    );
+  },
+
+  sendChatMessage(
+    chatId: string,
+    body: { content?: string; media_urls?: string[]; reply_to_id?: string }
+  ): Promise<ApiResult<ApiChatMessage>> {
+    return fetchApi<ApiChatMessage>(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+
+  toggleChatReaction(
+    chatId: string,
+    messageId: string,
+    emoji: string
+  ): Promise<ApiResult<{ action: 'added' | 'removed'; emoji: string }>> {
+    return fetchApi<{ action: 'added' | 'removed'; emoji: string }>(
+      `/api/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/reactions`,
+      { method: 'POST', body: JSON.stringify({ emoji }) }
+    );
+  },
+
+  async uploadChatImage(uri: string, fileName?: string): Promise<ApiResult<{ url: string }>> {
+    const token = await getAccessToken();
+    const url = `${API_BASE_URL}/api/chats/upload`;
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      name: fileName ?? 'image.jpg',
+      type: 'image/jpeg',
+    } as unknown as Blob);
+    const headers: Record<string, string> = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'POST', body: formData, headers });
+    const text = await res.text();
+    let data: { url: string } | undefined;
+    let error: string | undefined;
+    try {
+      const parsed = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      if (res.ok) data = parsed as { url: string };
+      else error = (parsed.error as string) ?? res.statusText;
+    } catch {
+      error = text || res.statusText;
+    }
+    return { data, error, status: res.status };
+  },
+
+  markChatRead(chatId: string): Promise<ApiResult<{ success: boolean }>> {
+    return fetchApi<{ success: boolean }>(`/api/chats/${encodeURIComponent(chatId)}/read`, {
+      method: 'POST',
+    });
   },
 };

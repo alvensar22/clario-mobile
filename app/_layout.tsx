@@ -50,6 +50,7 @@ export default function RootLayout() {
         <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
         <Stack.Screen name="premium" options={{ title: 'Premium' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+        <Stack.Screen name="chats" options={{ title: 'Messages' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="light" />

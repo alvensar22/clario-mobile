@@ -71,6 +71,21 @@ export default function ProfileByUsernameScreen() {
     else router.replace('/(tabs)');
   }, [router]);
 
+  const handleMessage = useCallback(async () => {
+    if (!profile?.id) return;
+    const { data, error } = await api.createOrGetChat(profile.id);
+    if (error || !data?.chatId) return;
+    router.push({
+      pathname: '/chats/[chatId]',
+      params: {
+        chatId: data.chatId,
+        username: profile.username ?? username ?? '',
+        otherUserId: profile.id,
+        avatarUrl: profile.avatar_url ?? '',
+      },
+    });
+  }, [profile, username, router]);
+
   if (loading && !profile) {
     return (
       <View style={styles.centered}>
@@ -120,6 +135,7 @@ export default function ProfileByUsernameScreen() {
         onRefresh={onRefresh}
         refreshing={refreshing}
         onEditProfile={isOwnProfile ? () => router.push('/profile/edit') : undefined}
+        onMessage={!isOwnProfile ? handleMessage : undefined}
       />
     </>
   );

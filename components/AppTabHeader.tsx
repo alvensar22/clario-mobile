@@ -1,4 +1,4 @@
-import { Bell } from 'lucide-react-native';
+import { Bell, MessageCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
@@ -8,6 +8,7 @@ import { PremiumPill } from '@/components/premium/PremiumPill';
 import { LogoIcon } from '@/components/ui/LogoIcon';
 import { api } from '@/services/api/client';
 import { useAuthStore } from '@/store/auth';
+import { useChatStore } from '@/store/chat';
 import { useNotificationsStore } from '@/store/notifications';
 
 export interface AppTabHeaderProps {
@@ -22,12 +23,20 @@ export function AppTabHeader({ showPremiumPill = false, rightTrailingElement }: 
   const profile = useAuthStore((s) => s.profile);
   const unreadCount = useNotificationsStore((s) => s.unreadCount);
   const setUnreadCount = useNotificationsStore((s) => s.setUnreadCount);
+  const chatUnreadCount = useChatStore((s) => s.unreadCount);
+  const setChatUnreadCount = useChatStore((s) => s.setUnreadCount);
 
   useEffect(() => {
     api.getNotificationUnreadCount().then(({ data }) => {
       if (data?.count != null) setUnreadCount(data.count);
     });
   }, [setUnreadCount]);
+
+  useEffect(() => {
+    api.getChatUnreadCount().then(({ data }) => {
+      if (data?.count != null) setChatUnreadCount(data.count);
+    });
+  }, [setChatUnreadCount]);
 
   return (
     <View style={styles.header}>
@@ -38,6 +47,18 @@ export function AppTabHeader({ showPremiumPill = false, rightTrailingElement }: 
           {showPremiumPill ? <PremiumPill /> : null}
         </View>
         <View style={styles.rightRow}>
+          <TouchableOpacity
+            onPress={() => router.push('/chats')}
+            hitSlop={12}
+            style={styles.iconBtn}
+            activeOpacity={0.7}>
+            <MessageCircle size={24} color="#fff" strokeWidth={2} />
+            {chatUnreadCount != null && chatUnreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/notifications')}
             hitSlop={12}
@@ -87,6 +108,7 @@ const styles = StyleSheet.create({
   logoText: { fontSize: 20, fontWeight: '700', color: '#fff' },
   rightRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   avatarBtn: { padding: 4 },
+  iconBtn: { padding: 8, position: 'relative' },
   bellBtn: { padding: 8, position: 'relative' },
   badge: {
     position: 'absolute',

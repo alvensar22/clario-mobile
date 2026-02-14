@@ -170,6 +170,60 @@ export interface ApiNotificationUnreadCount {
   count: number;
 }
 
+/** Chat list item from GET /api/chats */
+export interface ApiChat {
+  id: string;
+  other_user: { id: string; username: string | null; avatar_url: string | null };
+  last_message: { content: string; created_at: string; sender_id: string } | null;
+  unread_count: number;
+  updated_at: string;
+}
+
+/** Response from GET /api/chats */
+export interface ApiChatsResponse {
+  chats: ApiChat[];
+  hasMore: boolean;
+}
+
+/** Reply target on a message */
+export interface ApiChatReplyTo {
+  id: string;
+  content: string;
+  sender_id: string;
+}
+
+/** Reaction on a message */
+export interface ApiChatReaction {
+  emoji: string;
+  count: number;
+  reacted_by_me: boolean;
+}
+
+/** Single message from GET/POST /api/chats/[id]/messages */
+export interface ApiChatMessage {
+  id: string;
+  chat_id: string;
+  sender_id: string;
+  content: string;
+  media_urls?: string[];
+  created_at: string;
+  reply_to?: ApiChatReplyTo | null;
+  reactions?: ApiChatReaction[];
+}
+
+/** Response from GET /api/chats/[id]/messages */
+export interface ApiChatMessagesResponse {
+  messages: ApiChatMessage[];
+  hasMore: boolean;
+  recipient_last_read_at?: string | null;
+  my_last_read_at?: string | null;
+}
+
+/** Response from GET /api/chats/unread-count */
+export interface ApiChatUnreadCount {
+  count: number;
+}
+
 export interface ApiComment {
   id: string;
   post_id: string;

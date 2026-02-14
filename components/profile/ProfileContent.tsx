@@ -24,6 +24,7 @@ interface ProfileContentProps {
   onRefresh: () => void | Promise<void>;
   refreshing?: boolean;
   onEditProfile?: () => void;
+  onMessage?: () => void;
 }
 
 export function ProfileContent({
@@ -37,6 +38,7 @@ export function ProfileContent({
   onRefresh,
   refreshing = false,
   onEditProfile,
+  onMessage,
 }: ProfileContentProps) {
   const displayName = profile.username ?? 'unknown';
 
@@ -85,6 +87,14 @@ export function ProfileContent({
               initialFollowerCount={follow.followerCount}
               initialFollowingCount={follow.followingCount}
               isOwnProfile={isOwnProfile}
+            />
+          )}
+          {!isOwnProfile && onMessage && (
+            <Button
+              variant="secondary"
+              title="Message"
+              onPress={onMessage}
+              style={styles.editBtn}
             />
           )}
           {isOwnProfile && onEditProfile && (
