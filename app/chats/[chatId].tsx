@@ -234,7 +234,7 @@ export default function ChatConversationScreen() {
 
   if (!chatId) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
             <ArrowLeft size={24} color="#fff" strokeWidth={2} />
@@ -249,7 +249,7 @@ export default function ChatConversationScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
           <ArrowLeft size={24} color="#fff" strokeWidth={2} />

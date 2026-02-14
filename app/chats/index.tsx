@@ -208,7 +208,7 @@ export default function ChatsListScreen() {
   const keyExtractor = useCallback((item: ApiChat) => item.id, []);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={styles.backBtn}>
           <ArrowLeft size={24} color="#fff" strokeWidth={2} />
