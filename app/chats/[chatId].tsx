@@ -27,36 +27,80 @@ function MessageBubble({
   message,
   isFromMe,
   showSeen,
+  showAvatar,
+  avatarUrl,
+  username,
+  isFirstInGroup,
+  isLastInGroup,
 }: {
   message: ApiChatMessage;
   isFromMe: boolean;
   showSeen?: boolean;
+  showAvatar: boolean;
+  avatarUrl: string | null;
+  username: string;
+  isFirstInGroup: boolean;
+  isLastInGroup: boolean;
 }) {
   const urls = message.media_urls?.length ? message.media_urls : [];
   const hasText = (message.content ?? '').trim().length > 0;
 
+  const bubbleRadius = (): object => {
+    if (isFromMe) {
+      if (isFirstInGroup && isLastInGroup) return styles.bubbleSingleMe;
+      if (isFirstInGroup) return styles.bubbleFirstMe;
+      if (isLastInGroup) return styles.bubbleLastMe;
+      return styles.bubbleMiddleMe;
+    }
+    if (isFirstInGroup && isLastInGroup) return styles.bubbleSingleThem;
+    if (isFirstInGroup) return styles.bubbleFirstThem;
+    if (isLastInGroup) return styles.bubbleLastThem;
+    return styles.bubbleMiddleThem;
+  };
+
   return (
-    <View style={[styles.bubbleWrap, isFromMe ? styles.bubbleWrapMe : styles.bubbleWrapThem]}>
-      <View style={[styles.bubble, isFromMe ? styles.bubbleMe : styles.bubbleThem]}>
-        {message.reply_to && (
-          <View style={styles.replyPreview}>
-            <Text style={styles.replyText} numberOfLines={2}>
-              {message.reply_to.content}
-            </Text>
-          </View>
-        )}
-        {urls.length > 0 && (
-          <View style={styles.mediaWrap}>
-            {urls.map((url) => (
-              <Image key={url} source={{ uri: url }} style={styles.mediaImage} resizeMode="cover" />
-            ))}
-          </View>
-        )}
-        {hasText && <Text style={styles.bubbleText}>{message.content}</Text>}
-        <View style={styles.bubbleFooter}>
-          <RelativeTime isoDate={message.created_at} style={styles.bubbleTime} />
-          {isFromMe && showSeen && <Text style={styles.seen}>Seen</Text>}
+    <View
+      style={[
+        styles.bubbleRow,
+        isFromMe ? styles.bubbleRowMe : styles.bubbleRowThem,
+        isLastInGroup ? styles.bubbleRowSpaced : styles.bubbleRowTight,
+      ]}>
+      {!isFromMe && (
+        <View style={styles.avatarSlot}>
+          {showAvatar ? (
+            <Avatar
+              src={avatarUrl}
+              fallback={username}
+              size="sm"
+              sizePx={32}
+            />
+          ) : null}
         </View>
+      )}
+      <View style={[styles.bubbleCol, isFromMe ? styles.bubbleColMe : styles.bubbleColThem]}>
+        <View style={[styles.bubble, isFromMe ? styles.bubbleMe : styles.bubbleThem, bubbleRadius()]}>
+          {message.reply_to && (
+            <View style={[styles.replyPreview, isFromMe ? styles.replyPreviewMe : styles.replyPreviewThem]}>
+              <Text style={styles.replyText} numberOfLines={2}>
+                {message.reply_to.content}
+              </Text>
+            </View>
+          )}
+          {urls.length > 0 && (
+            <View style={styles.mediaWrap}>
+              {urls.map((url) => (
+                <Image key={url} source={{ uri: url }} style={styles.mediaImage} resizeMode="cover" />
+              ))}
+            </View>
+          )}
+          {hasText && <Text style={styles.bubbleText}>{message.content}</Text>}
+        </View>
+        {isLastInGroup && (
+          <View style={styles.bubbleFooter}>
+            <RelativeTime isoDate={message.created_at} style={[styles.bubbleTime, isFromMe ? styles.bubbleTimeMe : styles.bubbleTimeThem]} />
+            {isFromMe && showSeen && <Text style={styles.seen}>Seen</Text>}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -156,15 +200,34 @@ export default function ChatConversationScreen() {
     return new Date(msg.created_at).getTime() <= new Date(readAt).getTime();
   };
 
+  const reversedMessages = [...messages].reverse();
+
   const renderItem = useCallback(
-    ({ item }: { item: ApiChatMessage }) => (
-      <MessageBubble
-        message={item}
-        isFromMe={isFromMe(item)}
-        showSeen={isSeen(item)}
-      />
-    ),
-    [recipientLastReadAt]
+    ({ item, index }: { item: ApiChatMessage; index: number }) => {
+      const next = reversedMessages[index + 1]; // older message (above on screen)
+      const prev = reversedMessages[index - 1]; // newer message (below on screen)
+      const nextSameSender = next?.sender_id === item.sender_id;
+      const prevSameSender = prev?.sender_id === item.sender_id;
+      // Chronological first = oldest in group = top of group = no next same sender
+      const isFirstInGroup = !nextSameSender;
+      // Chronological last = newest in group = bottom of group = no prev same sender
+      const isLastInGroup = !prevSameSender;
+      const showAvatar = !isFromMe(item) && isLastInGroup;
+
+      return (
+        <MessageBubble
+          message={item}
+          isFromMe={isFromMe(item)}
+          showSeen={isSeen(item)}
+          showAvatar={showAvatar}
+          avatarUrl={avatarUrl}
+          username={username}
+          isFirstInGroup={isFirstInGroup}
+          isLastInGroup={isLastInGroup}
+        />
+      );
+    },
+    [recipientLastReadAt, reversedMessages, avatarUrl, username]
   );
 
   const keyExtractor = useCallback((item: ApiChatMessage) => item.id, []);
@@ -214,7 +277,7 @@ export default function ChatConversationScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
           <FlatList
             ref={listRef}
-            data={[...messages].reverse()}
+            data={reversedMessages}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             inverted
@@ -272,34 +335,40 @@ const styles = StyleSheet.create({
   messageList: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 8 },
   empty: { paddingVertical: 24, alignItems: 'center' },
   emptyText: { fontSize: 15, color: '#737373' },
-  bubbleWrap: { marginVertical: 2 },
-  bubbleWrapMe: { alignItems: 'flex-end' },
-  bubbleWrapThem: { alignItems: 'flex-start' },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  bubbleRowMe: { justifyContent: 'flex-end' },
+  bubbleRowThem: { justifyContent: 'flex-start' },
+  bubbleRowTight: { marginBottom: 6 },
+  bubbleRowSpaced: { marginBottom: 12 },
+  avatarSlot: { width: 32, height: 32, marginRight: 6, justifyContent: 'flex-end', alignItems: 'center' },
+  bubbleCol: { maxWidth: '80%', minWidth: 0 },
+  bubbleColMe: { alignItems: 'flex-end' },
+  bubbleColThem: { alignItems: 'flex-start' },
   bubble: {
-    maxWidth: '80%',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 18,
-    borderBottomRightRadius: 4,
   },
-  bubbleMe: { backgroundColor: '#3797f0', borderBottomRightRadius: 4, borderBottomLeftRadius: 18 },
-  bubbleThem: {
-    backgroundColor: '#262626',
-    borderBottomLeftRadius: 4,
-    borderBottomRightRadius: 18,
-  },
-  replyPreview: {
-    borderLeftWidth: 3,
-    borderLeftColor: 'rgba(255,255,255,0.5)',
-    paddingLeft: 8,
-    marginBottom: 6,
-  },
+  bubbleMe: { backgroundColor: '#3797f0' },
+  bubbleThem: { backgroundColor: '#262626' },
+  bubbleSingleMe: { borderRadius: 20, borderBottomRightRadius: 4 },
+  bubbleFirstMe: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomRightRadius: 4 },
+  bubbleLastMe: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20, borderTopRightRadius: 4 },
+  bubbleMiddleMe: { borderTopRightRadius: 4, borderBottomRightRadius: 4, borderTopLeftRadius: 20, borderBottomLeftRadius: 20 },
+  bubbleSingleThem: { borderRadius: 20, borderBottomLeftRadius: 4 },
+  bubbleFirstThem: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: 4 },
+  bubbleLastThem: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20, borderTopLeftRadius: 4 },
+  bubbleMiddleThem: { borderTopLeftRadius: 4, borderBottomLeftRadius: 4, borderTopRightRadius: 20, borderBottomRightRadius: 20 },
+  replyPreview: { paddingLeft: 8, marginBottom: 6 },
+  replyPreviewMe: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.5)' },
+  replyPreviewThem: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.4)' },
   replyText: { fontSize: 13, color: 'rgba(255,255,255,0.9)' },
   mediaWrap: { marginBottom: 4 },
   mediaImage: { width: 200, height: 200, borderRadius: 12, marginTop: 4 },
-  bubbleText: { fontSize: 15, color: '#fff', marginBottom: 2 },
-  bubbleFooter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  bubbleTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  bubbleText: { fontSize: 15, color: '#fff', marginBottom: 0 },
+  bubbleFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, paddingHorizontal: 4 },
+  bubbleTime: { fontSize: 11 },
+  bubbleTimeMe: { color: 'rgba(255,255,255,0.8)' },
+  bubbleTimeThem: { color: '#737373' },
   seen: { fontSize: 11, color: 'rgba(255,255,255,0.8)' },
   inputRow: {
     flexDirection: 'row',
