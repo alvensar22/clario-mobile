@@ -1,4 +1,4 @@
-import { ArrowLeft, Send } from 'lucide-react-native';
+import { ArrowLeft, Heart, Send } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -186,6 +186,19 @@ export default function ChatConversationScreen() {
     }
   }, [input, chatId, sending]);
 
+  const sendHeart = useCallback(async () => {
+    if (!chatId || sending) return;
+    setSending(true);
+    const { data, error } = await api.sendChatMessage(chatId, { content: '❤️' });
+    setSending(false);
+    if (!error && data) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === data.id)) return prev;
+        return [...prev, data];
+      });
+    }
+  }, [chatId, sending]);
+
   useEffect(() => {
     if (messages.length > 0) {
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
@@ -299,17 +312,31 @@ export default function ChatConversationScreen() {
               maxLength={2000}
               editable={!sending}
             />
-            <TouchableOpacity
-              onPress={sendMessage}
-              disabled={!input.trim() || sending}
-              style={[styles.sendBtn, (!input.trim() || sending) && styles.sendBtnDisabled]}
-              activeOpacity={0.7}>
-              {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Send size={20} color="#fff" strokeWidth={2} />
-              )}
-            </TouchableOpacity>
+            {input.trim() ? (
+              <TouchableOpacity
+                onPress={sendMessage}
+                disabled={sending}
+                style={styles.actionBtn}
+                activeOpacity={0.7}>
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Send size={22} color="#fff" strokeWidth={2} />
+                )}
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={sendHeart}
+                disabled={sending}
+                style={styles.actionBtn}
+                activeOpacity={0.7}>
+                {sending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Heart size={22} color="#fff" strokeWidth={2} fill="#fff" />
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         </KeyboardAvoidingView>
       )}
@@ -390,15 +417,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#fff',
   },
-  sendBtn: {
+  actionBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#3797f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendBtnDisabled: { opacity: 0.5 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { color: '#f87171', fontSize: 16 },
 });
