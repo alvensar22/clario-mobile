@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
+  ChevronDown,
   Heart,
   ImagePlus,
   Send,
@@ -16,6 +17,8 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -438,6 +441,7 @@ export default function ChatConversationScreen() {
   const [highlightedMessageId, setHighlightedMessageId] = useState<
     string | null
   >(null);
+  const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   const listRef = useRef<FlatList>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -636,6 +640,20 @@ export default function ChatConversationScreen() {
     [],
   );
 
+  const SCROLL_TO_LATEST_THRESHOLD = 150;
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      setShowScrollToLatest(y > SCROLL_TO_LATEST_THRESHOLD);
+    },
+    [],
+  );
+
+  const scrollToLatest = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    setShowScrollToLatest(false);
+  }, []);
+
   const handleReaction = useCallback(
     async (messageId: string, emoji: string) => {
       if (!chatId) return;
@@ -781,20 +799,36 @@ export default function ChatConversationScreen() {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
         >
-          <FlatList
-            ref={listRef}
-            data={reversedMessages}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            inverted
-            onScrollToIndexFailed={handleScrollToIndexFailed}
-            contentContainerStyle={styles.messageList}
-            ListEmptyComponent={
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>No messages yet. Say hi!</Text>
+          <View style={styles.messageListWrap}>
+            <FlatList
+              ref={listRef}
+              data={reversedMessages}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              inverted
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onScrollToIndexFailed={handleScrollToIndexFailed}
+              contentContainerStyle={styles.messageList}
+              ListEmptyComponent={
+                <View style={styles.empty}>
+                  <Text style={styles.emptyText}>No messages yet. Say hi!</Text>
+                </View>
+              }
+            />
+            {showScrollToLatest && reversedMessages.length > 0 && (
+              <View style={styles.scrollToLatestBtnWrap}>
+                <TouchableOpacity
+                  style={styles.scrollToLatestBtn}
+                  onPress={scrollToLatest}
+                  activeOpacity={0.8}
+                  accessibilityLabel="Scroll to latest message"
+                >
+                  <ChevronDown size={28} color="#fff" strokeWidth={2} />
+                </TouchableOpacity>
               </View>
-            }
-          />
+            )}
+          </View>
           {replyToMessage && (
             <View style={styles.replyBar}>
               <TouchableOpacity
@@ -1019,7 +1053,21 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: "600", color: "#fff" },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   keyboard: { flex: 1 },
+  messageListWrap: { flex: 1, position: "relative" },
   messageList: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 8 },
+  scrollToLatestBtnWrap: {
+    position: "absolute",
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  scrollToLatestBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   empty: { paddingVertical: 24, alignItems: "center" },
   emptyText: { fontSize: 15, color: "#737373" },
   bubbleRow: { flexDirection: "row", alignItems: "flex-end" },
