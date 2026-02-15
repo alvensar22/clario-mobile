@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowLeft,
@@ -178,10 +179,19 @@ function MessageBubble({
               delayLongPress={400}
               style={[
                 styles.bubble,
-                isFromMe ? styles.bubbleMe : styles.bubbleThem,
+                isFromMe ? undefined : styles.bubbleThem,
                 bubbleRadius(),
+                styles.bubbleOverflow,
               ]}
             >
+              {isFromMe && (
+                <LinearGradient
+                  colors={["#4a9ff5", "#3797f0"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               {message.reply_to && (
                 <TouchableOpacity
                   style={[
@@ -1012,6 +1022,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+  bubbleOverflow: { overflow: "hidden" },
   bubbleMe: { backgroundColor: "#3797f0" },
   bubbleThem: { backgroundColor: "#262626" },
   bubbleSingleMe: { borderRadius: 20, borderBottomRightRadius: 4 },
