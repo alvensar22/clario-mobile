@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Heart,
   ImagePlus,
+  Reply,
   Send,
   Smile,
   X,
@@ -93,6 +94,8 @@ function MessageBubble({
   onPressReply,
   onPressReplyPreview,
   isHighlighted,
+  isTapped,
+  onTapBubble,
 }: {
   message: ApiChatMessage;
   isFromMe: boolean;
@@ -110,6 +113,8 @@ function MessageBubble({
   onPressReply?: () => void;
   onPressReplyPreview?: (messageId: string) => void;
   isHighlighted?: boolean;
+  isTapped?: boolean;
+  onTapBubble?: () => void;
 }) {
   const urls = message.media_urls?.length ? message.media_urls : [];
   const hasText = (message.content ?? "").trim().length > 0;
@@ -167,6 +172,8 @@ function MessageBubble({
     return styles.bubbleMiddleThem;
   };
 
+  const showTime = isLastInGroup || isTapped;
+
   return (
     <GestureDetector gesture={panGesture}>
       <View
@@ -189,6 +196,26 @@ function MessageBubble({
             ) : null}
           </View>
         )}
+        {isFromMe && showTime && (
+          <View style={styles.bubbleActionsWrap}>
+            <TouchableOpacity
+              onPress={onPressReply}
+              style={styles.bubbleActionBtn}
+              hitSlop={8}
+              accessibilityLabel="Reply"
+            >
+              <Reply size={18} color="#737373" strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onOpenReactionPicker}
+              style={styles.bubbleActionBtn}
+              hitSlop={8}
+              accessibilityLabel="React"
+            >
+              <Smile size={18} color="#737373" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        )}
         <Animated.View
           style={[
             styles.bubbleCol,
@@ -204,6 +231,7 @@ function MessageBubble({
           >
             <TouchableOpacity
               activeOpacity={1}
+              onPress={onTapBubble}
               onLongPress={onOpenReactionPicker}
               delayLongPress={400}
               style={[
@@ -382,7 +410,7 @@ function MessageBubble({
               </View>
             )}
           </View>
-          {isLastInGroup && (
+          {showTime && (
             <View style={styles.bubbleFooter}>
               <RelativeTime
                 isoDate={message.created_at}
@@ -391,10 +419,32 @@ function MessageBubble({
                   isFromMe ? styles.bubbleTimeMe : styles.bubbleTimeThem,
                 ])}
               />
-              {isFromMe && showSeen && <Text style={styles.seen}>Seen</Text>}
+              {isLastInGroup && isFromMe && showSeen && (
+                <Text style={styles.seen}>Seen</Text>
+              )}
             </View>
           )}
         </Animated.View>
+        {!isFromMe && showTime && (
+          <View style={styles.bubbleActionsWrap}>
+            <TouchableOpacity
+              onPress={onPressReply}
+              style={styles.bubbleActionBtn}
+              hitSlop={8}
+              accessibilityLabel="Reply"
+            >
+              <Reply size={18} color="#737373" strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={onOpenReactionPicker}
+              style={styles.bubbleActionBtn}
+              hitSlop={8}
+              accessibilityLabel="React"
+            >
+              <Smile size={18} color="#737373" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </GestureDetector>
   );
@@ -442,6 +492,7 @@ export default function ChatConversationScreen() {
     string | null
   >(null);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
+  const [tappedMessageId, setTappedMessageId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -724,9 +775,16 @@ export default function ChatConversationScreen() {
           onPressImage={handlePressMessageImage}
           onReaction={handleReaction}
           onOpenReactionPicker={() => setReactionPickerMessageId(item.id)}
-          onPressReply={() => setReplyToMessage(item)}
+          onPressReply={() => {
+            setReplyToMessage(item);
+            setTappedMessageId(null);
+          }}
           onPressReplyPreview={scrollToMessage}
           isHighlighted={highlightedMessageId === item.id}
+          isTapped={tappedMessageId === item.id}
+          onTapBubble={() =>
+            setTappedMessageId((id) => (id === item.id ? null : item.id))
+          }
         />
       );
     },
@@ -741,6 +799,7 @@ export default function ChatConversationScreen() {
       chatId,
       scrollToMessage,
       highlightedMessageId,
+      tappedMessageId,
     ],
   );
 
@@ -1299,6 +1358,15 @@ const styles = StyleSheet.create({
   },
   mediaMoreText: { fontSize: 18, fontWeight: "700", color: "#fff" },
   bubbleText: { fontSize: 15, color: "#fff", marginBottom: 0 },
+  bubbleActionsWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 2,
+  },
+  bubbleActionBtn: {
+    padding: 6,
+  },
   bubbleFooter: {
     flexDirection: "row",
     alignItems: "center",
