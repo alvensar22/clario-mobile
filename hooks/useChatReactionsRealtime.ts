@@ -7,8 +7,8 @@ import type { ApiChatMessage } from '@/types/api';
 
 /**
  * Subscribes to Supabase Realtime for chat_message_reactions INSERT and DELETE.
- * Updates the conversation messages so reaction pills display below messages when anyone reacts.
- * Skips applying events for the current user (they're already updated optimistically).
+ * Filters INSERT by chat_id to only receive reactions for the current chat (reduces traffic and avoids cross-chat updates).
+ * DELETE events cannot be filtered by Supabase Realtime; we ignore events for other chats via client-side chat_id check when present.
  */
 export function useChatReactionsRealtime(
   chatId: string | null,
@@ -50,10 +50,12 @@ export function useChatReactionsRealtime(
             event: 'INSERT',
             schema: 'public',
             table: 'chat_message_reactions',
+            filter: `chat_id=eq.${chatId}`,
           },
           (payload) => {
             if (!mounted) return;
-            const row = payload.new as { message_id: string; user_id: string; emoji: string };
+            const row = payload.new as { message_id: string; user_id: string; emoji: string; chat_id?: string };
+            if (row.chat_id != null && row.chat_id !== chatId) return;
             if (row.user_id === currentUserIdRef.current) return;
             setMessagesRef.current((prev) =>
               prev.map((m) => {
@@ -91,9 +93,10 @@ export function useChatReactionsRealtime(
           (payload) => {
             if (!mounted) return;
             const row = (payload.old ?? (payload as { oldRecord?: Record<string, unknown> }).oldRecord) as
-              | { message_id: string; user_id: string; emoji: string }
+              | { message_id: string; user_id: string; emoji: string; chat_id?: string }
               | undefined;
             if (!row?.message_id || !row?.emoji) return;
+            if (row.chat_id != null && row.chat_id !== chatId) return;
             setMessagesRef.current((prev) =>
               prev.map((m) => {
                 if (m.id !== row.message_id) return m;
