@@ -29,6 +29,7 @@ import { RelativeTime } from '@/components/feed/RelativeTime';
 import { useAuthStore } from '@/store/auth';
 import { useChatStore } from '@/store/chat';
 import { useChatMessagesRealtime } from '@/hooks/useChatMessagesRealtime';
+import { useChatReactionsRealtime } from '@/hooks/useChatReactionsRealtime';
 
 const MAX_IMAGES = 5;
 const MEDIA_GRID_SIZE = 220;
@@ -54,9 +55,7 @@ function MessageBubble({
   chatId,
   onPressImage,
   onReaction,
-  showReactionPicker,
   onOpenReactionPicker,
-  onCloseReactionPicker,
   onPressReply,
   onPressReplyPreview,
   isHighlighted,
@@ -73,9 +72,7 @@ function MessageBubble({
   chatId: string;
   onPressImage?: (images: string[], index: number) => void;
   onReaction?: (messageId: string, emoji: string) => void;
-  showReactionPicker?: boolean;
   onOpenReactionPicker?: () => void;
-  onCloseReactionPicker?: () => void;
   onPressReply?: () => void;
   onPressReplyPreview?: (messageId: string) => void;
   isHighlighted?: boolean;
@@ -214,27 +211,13 @@ function MessageBubble({
         {reactions.length > 0 && (
           <View style={[styles.reactionsRow, isFromMe ? styles.reactionsRowMe : styles.reactionsRowThem]}>
             {reactions.map((r) => (
-              <View
+              <TouchableOpacity
                 key={r.emoji}
-                style={[styles.reactionPill, r.reacted_by_me && styles.reactionPillMine]}>
+                style={[styles.reactionPill, r.reacted_by_me && styles.reactionPillMine]}
+                onPress={() => onReaction?.(message.id, r.emoji)}
+                activeOpacity={0.7}>
                 <Text style={styles.reactionEmoji}>{r.emoji}</Text>
                 {r.count > 1 && <Text style={styles.reactionCount}>{r.count}</Text>}
-              </View>
-            ))}
-          </View>
-        )}
-        {showReactionPicker && (
-          <View style={[styles.reactionPickerWrap, isFromMe ? styles.reactionPickerMe : styles.reactionPickerThem]}>
-            {REACTION_EMOJIS.map((emoji) => (
-              <TouchableOpacity
-                key={emoji}
-                style={styles.reactionPickerBtn}
-                onPress={() => {
-                  onReaction?.(message.id, emoji);
-                  onCloseReactionPicker?.();
-                }}
-                activeOpacity={0.7}>
-                <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -327,6 +310,7 @@ export default function ChatConversationScreen() {
   );
 
   useChatMessagesRealtime(chatId || null, onRealtimeMessage);
+  useChatReactionsRealtime(chatId || null, currentUserId, setMessages);
 
   const sendMessage = useCallback(async () => {
     const content = (input ?? '').trim();
@@ -480,14 +464,17 @@ export default function ChatConversationScreen() {
             } else {
               reactions.push({ emoji, count: 1, reacted_by_me: true });
             }
-          } else {
-            if (idx >= 0) {
-              const r = reactions[idx];
-              if (r.count <= 1) reactions.splice(idx, 1);
-              else reactions[idx] = { ...r, count: r.count - 1, reacted_by_me: false };
-            }
+            return { ...m, reactions };
           }
-          return { ...m, reactions };
+          if (data.action === 'removed' && idx >= 0) {
+            const r = reactions[idx];
+            const nextReactions =
+              r.count <= 1
+                ? reactions.filter((_, i) => i !== idx)
+                : reactions.map((r2, i) => (i === idx ? { ...r2, count: r2.count - 1, reacted_by_me: false } : r2));
+            return { ...m, reactions: nextReactions };
+          }
+          return m;
         })
       );
     },
@@ -518,9 +505,7 @@ export default function ChatConversationScreen() {
           chatId={chatId}
           onPressImage={handlePressMessageImage}
           onReaction={handleReaction}
-          showReactionPicker={reactionPickerMessageId === item.id}
           onOpenReactionPicker={() => setReactionPickerMessageId(item.id)}
-          onCloseReactionPicker={() => setReactionPickerMessageId(null)}
           onPressReply={() => setReplyToMessage(item)}
           onPressReplyPreview={scrollToMessage}
           isHighlighted={highlightedMessageId === item.id}
@@ -534,7 +519,6 @@ export default function ChatConversationScreen() {
       username,
       handlePressMessageImage,
       handleReaction,
-      reactionPickerMessageId,
       currentUserId,
       chatId,
       scrollToMessage,
@@ -587,12 +571,6 @@ export default function ChatConversationScreen() {
           style={styles.keyboard}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
-          {reactionPickerMessageId ? (
-            <Pressable
-              style={styles.reactionPickerBackdrop}
-              onPress={() => setReactionPickerMessageId(null)}
-            />
-          ) : null}
           <FlatList
             ref={listRef}
             data={reversedMessages}
@@ -733,6 +711,32 @@ export default function ChatConversationScreen() {
               onClose={() => setImagePreview(null)}
             />
           )}
+          <Modal
+            visible={!!reactionPickerMessageId}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setReactionPickerMessageId(null)}>
+            <Pressable
+              style={styles.reactionPickerModalBackdrop}
+              onPress={() => setReactionPickerMessageId(null)}>
+              <Pressable style={styles.reactionPickerModalContent} onPress={(e) => e.stopPropagation()}>
+                <View style={styles.reactionPickerModalRow}>
+                  {REACTION_EMOJIS.map((emoji) => (
+                    <TouchableOpacity
+                      key={emoji}
+                      style={styles.reactionPickerBtn}
+                      onPress={() => {
+                        if (reactionPickerMessageId) handleReaction(reactionPickerMessageId, emoji);
+                        setReactionPickerMessageId(null);
+                      }}
+                      activeOpacity={0.7}>
+                      <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
         </KeyboardAvoidingView>
       )}
     </SafeAreaView>
@@ -816,9 +820,25 @@ const styles = StyleSheet.create({
   reactionPickerThem: { alignSelf: 'flex-start' },
   reactionPickerBtn: { padding: 6 },
   reactionPickerEmoji: { fontSize: 24 },
-  reactionPickerBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
+  reactionPickerModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reactionPickerModalContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 24,
+  },
+  reactionPickerModalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   mediaGrid: { marginBottom: 4, width: MEDIA_GRID_SIZE, overflow: 'hidden', borderRadius: 10 },
   mediaCell1: { width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden' },
