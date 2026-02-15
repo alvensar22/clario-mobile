@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 
 import { getAccessToken } from '@/store/auth-tokens';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/utils/env';
-import type { ApiChatMessage } from '@/types/api';
+import type { ApiChatMessage, ApiChatReplyTo } from '@/types/api';
 
 /**
  * Subscribes to Supabase Realtime for new messages in a single chat.
@@ -48,9 +48,24 @@ export function useChatMessagesRealtime(
             table: 'chat_messages',
             filter: `chat_id=eq.${chatId}`,
           },
-          (payload) => {
+          async (payload) => {
             if (!mounted) return;
             const row = payload.new as Record<string, unknown>;
+            const replyToId = row.reply_to_id as string | undefined;
+            let replyTo: ApiChatReplyTo | undefined;
+            if (replyToId && supabaseRef.current) {
+              const { data: replyRow } = await supabaseRef.current
+                .from('chat_messages')
+                .select('id, content, sender_id')
+                .eq('id', replyToId)
+                .maybeSingle();
+              if (replyRow)
+                replyTo = {
+                  id: replyRow.id,
+                  content: (replyRow.content as string) ?? '',
+                  sender_id: replyRow.sender_id as string,
+                };
+            }
             const msg: ApiChatMessage = {
               id: row.id as string,
               chat_id: row.chat_id as string,
@@ -58,10 +73,10 @@ export function useChatMessagesRealtime(
               content: (row.content as string) ?? '',
               media_urls: (row.media_urls as string[] | undefined) ?? undefined,
               created_at: row.created_at as string,
-              reply_to: undefined,
+              reply_to: replyTo ?? undefined,
               reactions: [],
             };
-            onNewMessageRef.current(msg);
+            if (mounted) onNewMessageRef.current(msg);
           }
         )
         .subscribe((status) => {

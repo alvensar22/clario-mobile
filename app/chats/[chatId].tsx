@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowLeft, Heart, ImagePlus, Send, Smile, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
   Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { runOnJS } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { api } from '@/services/api/client';
@@ -37,6 +39,8 @@ const EMOJI_GRID = [
   '😍', '🤔', '😎', '🥳', '😭', '🤣', '💯', '✨', '🎉', '💪',
 ];
 
+const REACTION_EMOJIS = ['❤️', '👍', '😂', '😮', '😢', '🔥', '👏', '🙏'];
+
 function MessageBubble({
   message,
   isFromMe,
@@ -46,7 +50,16 @@ function MessageBubble({
   username,
   isFirstInGroup,
   isLastInGroup,
+  currentUserId,
+  chatId,
   onPressImage,
+  onReaction,
+  showReactionPicker,
+  onOpenReactionPicker,
+  onCloseReactionPicker,
+  onPressReply,
+  onPressReplyPreview,
+  isHighlighted,
 }: {
   message: ApiChatMessage;
   isFromMe: boolean;
@@ -56,11 +69,37 @@ function MessageBubble({
   username: string;
   isFirstInGroup: boolean;
   isLastInGroup: boolean;
+  currentUserId: string | null;
+  chatId: string;
   onPressImage?: (images: string[], index: number) => void;
+  onReaction?: (messageId: string, emoji: string) => void;
+  showReactionPicker?: boolean;
+  onOpenReactionPicker?: () => void;
+  onCloseReactionPicker?: () => void;
+  onPressReply?: () => void;
+  onPressReplyPreview?: (messageId: string) => void;
+  isHighlighted?: boolean;
 }) {
   const urls = message.media_urls?.length ? message.media_urls : [];
   const hasText = (message.content ?? '').trim().length > 0;
   const n = urls.length;
+  const reactions = message.reactions ?? [];
+
+  const SWIPE_THRESHOLD = 50;
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .minDistance(15)
+        .activeOffsetX(20)
+        .failOffsetY([-18, 18])
+        .onEnd((e) => {
+          'worklet';
+          const tx = e.translationX;
+          if (isFromMe && tx < -SWIPE_THRESHOLD && onPressReply) runOnJS(onPressReply)();
+          if (!isFromMe && tx > SWIPE_THRESHOLD && onPressReply) runOnJS(onPressReply)();
+        }),
+    [isFromMe, onPressReply]
+  );
 
   const bubbleRadius = (): object => {
     if (isFromMe) {
@@ -76,32 +115,44 @@ function MessageBubble({
   };
 
   return (
-    <View
-      style={[
-        styles.bubbleRow,
-        isFromMe ? styles.bubbleRowMe : styles.bubbleRowThem,
-        isLastInGroup ? styles.bubbleRowSpaced : styles.bubbleRowTight,
-      ]}>
-      {!isFromMe && (
-        <View style={styles.avatarSlot}>
-          {showAvatar ? (
-            <Avatar
-              src={avatarUrl}
-              fallback={username}
-              size="sm"
-              sizePx={32}
-            />
-          ) : null}
-        </View>
-      )}
-      <View style={[styles.bubbleCol, isFromMe ? styles.bubbleColMe : styles.bubbleColThem]}>
-        <View style={[styles.bubble, isFromMe ? styles.bubbleMe : styles.bubbleThem, bubbleRadius()]}>
+    <GestureDetector gesture={panGesture}>
+      <View
+        style={[
+          styles.bubbleRow,
+          isFromMe ? styles.bubbleRowMe : styles.bubbleRowThem,
+          isLastInGroup ? styles.bubbleRowSpaced : styles.bubbleRowTight,
+          isHighlighted && styles.bubbleRowHighlight,
+        ]}>
+        {!isFromMe && (
+          <View style={styles.avatarSlot}>
+            {showAvatar ? (
+              <Avatar
+                src={avatarUrl}
+                fallback={username}
+                size="sm"
+                sizePx={32}
+              />
+            ) : null}
+          </View>
+        )}
+        <View style={[styles.bubbleCol, isFromMe ? styles.bubbleColMe : styles.bubbleColThem]}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onLongPress={onOpenReactionPicker}
+          delayLongPress={400}
+          style={[styles.bubble, isFromMe ? styles.bubbleMe : styles.bubbleThem, bubbleRadius()]}>
           {message.reply_to && (
-            <View style={[styles.replyPreview, isFromMe ? styles.replyPreviewMe : styles.replyPreviewThem]}>
+            <TouchableOpacity
+              style={[styles.replyPreview, isFromMe ? styles.replyPreviewMe : styles.replyPreviewThem]}
+              onPress={() => onPressReplyPreview?.(message.reply_to!.id)}
+              activeOpacity={0.7}>
+              <Text style={styles.replyLabel}>
+                {message.reply_to.sender_id === currentUserId ? 'You' : username}
+              </Text>
               <Text style={styles.replyText} numberOfLines={2}>
                 {message.reply_to.content}
               </Text>
-            </View>
+            </TouchableOpacity>
           )}
           {urls.length > 0 && (
             <View style={styles.mediaGrid}>
@@ -159,7 +210,35 @@ function MessageBubble({
             </View>
           )}
           {hasText && <Text style={styles.bubbleText}>{message.content}</Text>}
-        </View>
+        </TouchableOpacity>
+        {reactions.length > 0 && (
+          <View style={[styles.reactionsRow, isFromMe ? styles.reactionsRowMe : styles.reactionsRowThem]}>
+            {reactions.map((r) => (
+              <View
+                key={r.emoji}
+                style={[styles.reactionPill, r.reacted_by_me && styles.reactionPillMine]}>
+                <Text style={styles.reactionEmoji}>{r.emoji}</Text>
+                {r.count > 1 && <Text style={styles.reactionCount}>{r.count}</Text>}
+              </View>
+            ))}
+          </View>
+        )}
+        {showReactionPicker && (
+          <View style={[styles.reactionPickerWrap, isFromMe ? styles.reactionPickerMe : styles.reactionPickerThem]}>
+            {REACTION_EMOJIS.map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={styles.reactionPickerBtn}
+                onPress={() => {
+                  onReaction?.(message.id, emoji);
+                  onCloseReactionPicker?.();
+                }}
+                activeOpacity={0.7}>
+                <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         {isLastInGroup && (
           <View style={styles.bubbleFooter}>
             <RelativeTime isoDate={message.created_at} style={[styles.bubbleTime, isFromMe ? styles.bubbleTimeMe : styles.bubbleTimeThem]} />
@@ -168,6 +247,7 @@ function MessageBubble({
         )}
       </View>
     </View>
+    </GestureDetector>
   );
 }
 
@@ -198,7 +278,11 @@ export default function ChatConversationScreen() {
     { id: string; preview: string; url?: string; uploading: boolean }[]
   >([]);
   const [imagePreview, setImagePreview] = useState<{ images: string[]; initialIndex: number } | null>(null);
+  const [reactionPickerMessageId, setReactionPickerMessageId] = useState<string | null>(null);
+  const [replyToMessage, setReplyToMessage] = useState<ApiChatMessage | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<TextInput>(null);
 
   const loadMessages = useCallback(async () => {
@@ -218,6 +302,12 @@ export default function ChatConversationScreen() {
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+    };
+  }, []);
 
   const onRealtimeMessage = useCallback(
     (msg: ApiChatMessage) => {
@@ -244,13 +334,16 @@ export default function ChatConversationScreen() {
     const allUploaded = pendingImages.every((p) => p.url);
     if (!hasContent || !chatId || sending || !allUploaded) return;
 
+    const replyToId = replyToMessage?.id;
     setSending(true);
     const urls = pendingImages.map((p) => p.url).filter((u): u is string => !!u);
     setPendingImages([]);
     setInput('');
+    setReplyToMessage(null);
     const { data, error } = await api.sendChatMessage(chatId, {
       ...(content ? { content } : {}),
       ...(urls.length ? { media_urls: urls } : {}),
+      ...(replyToId ? { reply_to_id: replyToId } : {}),
     });
     setSending(false);
     if (error) {
@@ -263,7 +356,7 @@ export default function ChatConversationScreen() {
         return [...prev, data];
       });
     }
-  }, [input, chatId, sending, pendingImages]);
+  }, [input, chatId, sending, pendingImages, replyToMessage?.id]);
 
   const pickImages = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -305,8 +398,13 @@ export default function ChatConversationScreen() {
 
   const sendHeart = useCallback(async () => {
     if (!chatId || sending) return;
+    const replyToId = replyToMessage?.id;
     setSending(true);
-    const { data, error } = await api.sendChatMessage(chatId, { content: '❤️' });
+    setReplyToMessage(null);
+    const { data, error } = await api.sendChatMessage(chatId, {
+      content: '❤️',
+      ...(replyToId ? { reply_to_id: replyToId } : {}),
+    });
     setSending(false);
     if (!error && data) {
       setMessages((prev) => {
@@ -314,7 +412,7 @@ export default function ChatConversationScreen() {
         return [...prev, data];
       });
     }
-  }, [chatId, sending]);
+  }, [chatId, sending, replyToMessage?.id]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -336,6 +434,66 @@ export default function ChatConversationScreen() {
     setImagePreview({ images, initialIndex: index });
   }, []);
 
+  const scrollToMessage = useCallback(
+    (messageId: string) => {
+      const index = reversedMessages.findIndex((m) => m.id === messageId);
+      if (index < 0) return;
+      if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current);
+      setHighlightedMessageId(messageId);
+      highlightTimeoutRef.current = setTimeout(() => {
+        setHighlightedMessageId(null);
+        highlightTimeoutRef.current = null;
+      }, 2000);
+      listRef.current?.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    },
+    [reversedMessages]
+  );
+
+  const handleScrollToIndexFailed = useCallback((info: { index: number; highestMeasuredFrameIndex: number; averageItemLength: number }) => {
+    listRef.current?.scrollToOffset({
+      offset: info.averageItemLength * info.index,
+      animated: true,
+    });
+  }, []);
+
+  const handleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      if (!chatId) return;
+      const { data, error } = await api.toggleChatReaction(chatId, messageId, emoji);
+      if (error || !data) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          const reactions = [...(m.reactions ?? [])];
+          const idx = reactions.findIndex((r) => r.emoji === emoji);
+          if (data.action === 'added') {
+            if (idx >= 0) {
+              reactions[idx] = {
+                ...reactions[idx],
+                count: reactions[idx].count + 1,
+                reacted_by_me: true,
+              };
+            } else {
+              reactions.push({ emoji, count: 1, reacted_by_me: true });
+            }
+          } else {
+            if (idx >= 0) {
+              const r = reactions[idx];
+              if (r.count <= 1) reactions.splice(idx, 1);
+              else reactions[idx] = { ...r, count: r.count - 1, reacted_by_me: false };
+            }
+          }
+          return { ...m, reactions };
+        })
+      );
+    },
+    [chatId]
+  );
+
   const renderItem = useCallback(
     ({ item, index }: { item: ApiChatMessage; index: number }) => {
       const next = reversedMessages[index + 1]; // older message (above on screen)
@@ -356,11 +514,32 @@ export default function ChatConversationScreen() {
           username={username}
           isFirstInGroup={isFirstInGroup}
           isLastInGroup={isLastInGroup}
+          currentUserId={currentUserId}
+          chatId={chatId}
           onPressImage={handlePressMessageImage}
+          onReaction={handleReaction}
+          showReactionPicker={reactionPickerMessageId === item.id}
+          onOpenReactionPicker={() => setReactionPickerMessageId(item.id)}
+          onCloseReactionPicker={() => setReactionPickerMessageId(null)}
+          onPressReply={() => setReplyToMessage(item)}
+          onPressReplyPreview={scrollToMessage}
+          isHighlighted={highlightedMessageId === item.id}
         />
       );
     },
-    [recipientLastReadAt, reversedMessages, avatarUrl, username, handlePressMessageImage]
+    [
+      recipientLastReadAt,
+      reversedMessages,
+      avatarUrl,
+      username,
+      handlePressMessageImage,
+      handleReaction,
+      reactionPickerMessageId,
+      currentUserId,
+      chatId,
+      scrollToMessage,
+      highlightedMessageId,
+    ]
   );
 
   const keyExtractor = useCallback((item: ApiChatMessage) => item.id, []);
@@ -408,12 +587,19 @@ export default function ChatConversationScreen() {
           style={styles.keyboard}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+          {reactionPickerMessageId ? (
+            <Pressable
+              style={styles.reactionPickerBackdrop}
+              onPress={() => setReactionPickerMessageId(null)}
+            />
+          ) : null}
           <FlatList
             ref={listRef}
             data={reversedMessages}
             keyExtractor={keyExtractor}
             renderItem={renderItem}
             inverted
+            onScrollToIndexFailed={handleScrollToIndexFailed}
             contentContainerStyle={styles.messageList}
             ListEmptyComponent={
               <View style={styles.empty}>
@@ -421,6 +607,28 @@ export default function ChatConversationScreen() {
               </View>
             }
           />
+          {replyToMessage && (
+            <View style={styles.replyBar}>
+              <TouchableOpacity
+                style={styles.replyBarContent}
+                onPress={() => scrollToMessage(replyToMessage.id)}
+                activeOpacity={0.8}>
+                <Text style={styles.replyBarLabel}>
+                  Replying to {replyToMessage.sender_id === currentUserId ? 'You' : username}
+                </Text>
+                <Text style={styles.replyBarPreview} numberOfLines={1}>
+                  {replyToMessage.content?.trim() || (replyToMessage.media_urls?.length ? 'Photo' : '')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setReplyToMessage(null)}
+                style={styles.replyBarClose}
+                hitSlop={8}
+                accessibilityLabel="Cancel reply">
+                <X size={20} color="#737373" strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          )}
           {pendingImages.length > 0 && (
             <View style={styles.pendingImagesRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pendingImagesScroll}>
@@ -554,6 +762,7 @@ const styles = StyleSheet.create({
   bubbleRowThem: { justifyContent: 'flex-start' },
   bubbleRowTight: { marginBottom: 6 },
   bubbleRowSpaced: { marginBottom: 12 },
+  bubbleRowHighlight: { backgroundColor: 'rgba(55,151,240,0.15)', borderRadius: 12, marginHorizontal: -4, paddingHorizontal: 4 },
   avatarSlot: { width: 32, height: 32, marginRight: 6, justifyContent: 'flex-end', alignItems: 'center' },
   bubbleCol: { maxWidth: '80%', minWidth: 0 },
   bubbleColMe: { alignItems: 'flex-end' },
@@ -575,7 +784,42 @@ const styles = StyleSheet.create({
   replyPreview: { paddingLeft: 8, marginBottom: 6 },
   replyPreviewMe: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.5)' },
   replyPreviewThem: { borderLeftWidth: 3, borderLeftColor: 'rgba(255,255,255,0.4)' },
+  replyLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 2, fontWeight: '600' },
   replyText: { fontSize: 13, color: 'rgba(255,255,255,0.9)' },
+  reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4, paddingHorizontal: 2 },
+  reactionsRowMe: { justifyContent: 'flex-end' },
+  reactionsRowThem: { justifyContent: 'flex-start' },
+  reactionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 2,
+  },
+  reactionPillMine: { backgroundColor: 'rgba(55,151,240,0.5)' },
+  reactionEmoji: { fontSize: 14 },
+  reactionCount: { fontSize: 12, color: 'rgba(255,255,255,0.9)' },
+  reactionPickerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 24,
+    alignSelf: 'flex-start',
+  },
+  reactionPickerMe: { alignSelf: 'flex-end' },
+  reactionPickerThem: { alignSelf: 'flex-start' },
+  reactionPickerBtn: { padding: 6 },
+  reactionPickerEmoji: { fontSize: 24 },
+  reactionPickerBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
   mediaGrid: { marginBottom: 4, width: MEDIA_GRID_SIZE, overflow: 'hidden', borderRadius: 10 },
   mediaCell1: { width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75, backgroundColor: '#171717', borderRadius: 10, overflow: 'hidden' },
   mediaRow2: { flexDirection: 'row', width: MEDIA_GRID_SIZE, height: MEDIA_GRID_SIZE * 0.75 },
@@ -599,6 +843,20 @@ const styles = StyleSheet.create({
   bubbleTimeMe: { color: 'rgba(255,255,255,0.8)' },
   bubbleTimeThem: { color: '#737373' },
   seen: { fontSize: 11, color: 'rgba(255,255,255,0.8)' },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#262626',
+    backgroundColor: '#0a0a0a',
+    gap: 10,
+  },
+  replyBarContent: { flex: 1, minWidth: 0 },
+  replyBarLabel: { fontSize: 12, color: '#3797f0', fontWeight: '600', marginBottom: 2 },
+  replyBarPreview: { fontSize: 13, color: '#737373' },
+  replyBarClose: { padding: 4 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

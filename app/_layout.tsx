@@ -3,6 +3,8 @@ import { Stack, useRouter } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
 import { useChatUnreadRealtime } from '@/hooks/useChatUnreadRealtime';
@@ -46,9 +48,7 @@ export default function RootLayout() {
       }
     });
     return () => {
-      if (responseListenerRef.current) {
-        Notifications.removeNotificationSubscription(responseListenerRef.current);
-      }
+      responseListenerRef.current?.remove?.();
     };
   }, [router]);
 
@@ -63,27 +63,31 @@ export default function RootLayout() {
       }
     });
     return () => {
-      if (receivedListenerRef.current) {
-        Notifications.removeNotificationSubscription(receivedListenerRef.current);
-      }
+      receivedListenerRef.current?.remove?.();
     };
   }, []);
 
   return (
-    <ThemeProvider value={DarkTheme}>
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="profile" options={{ title: 'Profile' }} />
-        <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
-        <Stack.Screen name="premium" options={{ title: 'Premium' }} />
-        <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
-        <Stack.Screen name="chats" options={{ title: 'Messages' }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-      <StatusBar style="light" />
-    </ThemeProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <ThemeProvider value={DarkTheme}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#000' } }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="profile" options={{ title: 'Profile' }} />
+          <Stack.Screen name="post/[id]" options={{ title: 'Post' }} />
+          <Stack.Screen name="premium" options={{ title: 'Premium' }} />
+          <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+          <Stack.Screen name="chats" options={{ title: 'Messages' }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+        <StatusBar style="light" />
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  gestureRoot: { flex: 1 },
+});
