@@ -26,7 +26,12 @@ import {
   View,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { runOnJS } from "react-native-reanimated";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/feed/Avatar";
@@ -109,22 +114,42 @@ function MessageBubble({
   const reactions = message.reactions ?? [];
 
   const SWIPE_THRESHOLD = 50;
+  const SWIPE_MAX = 72;
+  const translateX = useSharedValue(0);
+
   const panGesture = useMemo(
     () =>
       Gesture.Pan()
         .minDistance(15)
         .activeOffsetX(20)
         .failOffsetY([-18, 18])
+        .onUpdate((e) => {
+          "worklet";
+          const tx = e.translationX;
+          if (isFromMe) {
+            translateX.value = tx > 0 ? 0 : Math.max(tx, -SWIPE_MAX);
+          } else {
+            translateX.value = tx < 0 ? 0 : Math.min(tx, SWIPE_MAX);
+          }
+        })
         .onEnd((e) => {
           "worklet";
           const tx = e.translationX;
-          if (isFromMe && tx < -SWIPE_THRESHOLD && onPressReply)
-            runOnJS(onPressReply)();
-          if (!isFromMe && tx > SWIPE_THRESHOLD && onPressReply)
-            runOnJS(onPressReply)();
+          const triggered =
+            (isFromMe && tx < -SWIPE_THRESHOLD) ||
+            (!isFromMe && tx > SWIPE_THRESHOLD);
+          if (triggered && onPressReply) runOnJS(onPressReply)();
+          translateX.value = withSpring(0, {
+            damping: 20,
+            stiffness: 300,
+          });
         }),
     [isFromMe, onPressReply],
   );
+
+  const animatedBubbleStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
 
   const bubbleRadius = (): object => {
     if (isFromMe) {
@@ -161,10 +186,11 @@ function MessageBubble({
             ) : null}
           </View>
         )}
-        <View
+        <Animated.View
           style={[
             styles.bubbleCol,
             isFromMe ? styles.bubbleColMe : styles.bubbleColThem,
+            animatedBubbleStyle,
           ]}
         >
           <View
@@ -357,15 +383,15 @@ function MessageBubble({
             <View style={styles.bubbleFooter}>
               <RelativeTime
                 isoDate={message.created_at}
-                style={[
+                style={StyleSheet.flatten([
                   styles.bubbleTime,
                   isFromMe ? styles.bubbleTimeMe : styles.bubbleTimeThem,
-                ]}
+                ])}
               />
               {isFromMe && showSeen && <Text style={styles.seen}>Seen</Text>}
             </View>
           )}
-        </View>
+        </Animated.View>
       </View>
     </GestureDetector>
   );
@@ -990,6 +1016,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   headerTitle: { fontSize: 16, fontWeight: "600", color: "#fff", flex: 1 },
+  title: { fontSize: 16, fontWeight: "600", color: "#fff" },
   loadingWrap: { flex: 1, justifyContent: "center", alignItems: "center" },
   keyboard: { flex: 1 },
   messageList: { paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 8 },
@@ -1025,39 +1052,39 @@ const styles = StyleSheet.create({
   bubbleOverflow: { overflow: "hidden" },
   bubbleMe: { backgroundColor: "#3797f0" },
   bubbleThem: { backgroundColor: "#262626" },
-  bubbleSingleMe: { borderRadius: 20, borderBottomRightRadius: 4 },
+  bubbleSingleMe: { borderRadius: 8, borderBottomRightRadius: 4 },
   bubbleFirstMe: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     borderBottomRightRadius: 4,
   },
   bubbleLastMe: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
     borderTopRightRadius: 4,
   },
   bubbleMiddleMe: {
     borderTopRightRadius: 4,
     borderBottomRightRadius: 4,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
   },
-  bubbleSingleThem: { borderRadius: 20, borderBottomLeftRadius: 4 },
+  bubbleSingleThem: { borderRadius: 8, borderBottomLeftRadius: 4 },
   bubbleFirstThem: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     borderBottomLeftRadius: 4,
   },
   bubbleLastThem: {
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
     borderTopLeftRadius: 4,
   },
   bubbleMiddleThem: {
     borderTopLeftRadius: 4,
     borderBottomLeftRadius: 4,
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
   },
   replyPreview: { paddingLeft: 8, marginBottom: 6 },
   replyPreviewMe: {
