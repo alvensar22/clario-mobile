@@ -15,6 +15,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -544,17 +545,24 @@ export default function ChatConversationScreen() {
   useChatMessagesRealtime(chatId || null, onRealtimeMessage);
   useChatReactionsRealtime(chatId || null, currentUserId, setMessages);
 
+  const sendDisabled = useMemo(
+    () =>
+      sending ||
+      pendingImages.some((p) => p.uploading) ||
+      !(input.trim() || pendingImages.some((p) => p.url)),
+    [sending, pendingImages, input],
+  );
+
   const sendMessage = useCallback(async () => {
     const content = (input ?? "").trim();
-    const hasContent = content || pendingImages.length > 0;
-    const allUploaded = pendingImages.every((p) => p.url);
-    if (!hasContent || !chatId || sending || !allUploaded) return;
+    const urlsReady = pendingImages.map((p) => p.url).filter((u): u is string => !!u);
+    const hasContent = content || urlsReady.length > 0;
+    if (!hasContent || !chatId || sending) return;
 
     const replyToId = replyToMessage?.id;
     setSending(true);
-    const urls = pendingImages
-      .map((p) => p.url)
-      .filter((u): u is string => !!u);
+    const urls = urlsReady;
+    const savedPending = pendingImages;
     setPendingImages([]);
     setInput("");
     setReplyToMessage(null);
@@ -566,6 +574,8 @@ export default function ChatConversationScreen() {
     setSending(false);
     if (error) {
       setInput(content);
+      setPendingImages(savedPending);
+      Alert.alert("Couldn't send", error);
       return;
     }
     if (data) {
@@ -592,19 +602,23 @@ export default function ChatConversationScreen() {
       uploading: true as const,
     }));
     setPendingImages((prev) => [...prev, ...toAdd].slice(0, MAX_IMAGES));
+    const results: { itemId: string; url?: string }[] = [];
     for (let i = 0; i < toAdd.length; i++) {
       const asset = result.assets[i];
       const itemId = toAdd[i]?.id;
       if (!asset?.uri || !itemId) continue;
-      const { data: uploadData } = await api.uploadChatImage(asset.uri);
-      setPendingImages((prev) =>
-        prev.map((p) =>
-          p.id === itemId && p.uploading
-            ? { ...p, url: uploadData?.url, uploading: false }
-            : p,
-        ),
-      );
+      const fileName = (asset as { fileName?: string }).fileName ?? (asset.uri.toLowerCase().includes('.png') ? 'image.png' : 'image.jpg');
+      const { data: uploadData, error: uploadError } = await api.uploadChatImage(asset.uri, fileName);
+      results.push({ itemId, url: uploadError ? undefined : uploadData?.url });
     }
+    setPendingImages((prev) =>
+      prev.map((p) => {
+        if (!p.uploading) return p;
+        const r = results.find((x) => x.itemId === p.id);
+        if (r === undefined) return p;
+        return { ...p, url: r.url, uploading: false };
+      }),
+    );
   }, [pendingImages.length]);
 
   const removePendingImage = useCallback((index: number) => {
@@ -990,8 +1004,8 @@ export default function ChatConversationScreen() {
             {input.trim() || pendingImages.length > 0 ? (
               <TouchableOpacity
                 onPress={sendMessage}
-                disabled={sending || pendingImages.some((p) => p.uploading)}
-                style={styles.actionBtn}
+                disabled={sendDisabled}
+                style={[styles.actionBtn, sendDisabled && { opacity: 0.5 }]}
                 activeOpacity={0.7}
               >
                 {sending ? (
